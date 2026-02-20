@@ -25,6 +25,10 @@ final readonly class UriVersionResolver implements VersionResolver
         $versionString = $route->parameter($this->parameterName);
 
         if (! $versionString || ! is_string($versionString)) {
+            $versionString = $route->getAction('api_version');
+        }
+
+        if (! $versionString || ! is_string($versionString)) {
             return null;
         }
 

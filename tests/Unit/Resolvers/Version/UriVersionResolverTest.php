@@ -79,3 +79,18 @@ test('uses custom parameter name', function () {
     expect($version)->toBeInstanceOf(ApiVersion::class)
         ->and($version->major)->toBe(3);
 });
+
+test('extracts version from route action metadata when parameter missing', function () {
+    $request = Request::create('/api/v2/users');
+    $route = new Route('GET', '/api/v2/users', []);
+    $route->setAction(['api_version' => '2']);
+    $route->bind($request);
+    $request->setRouteResolver(fn () => $route);
+
+    $resolver = new UriVersionResolver('version');
+    $version = $resolver->resolve($request);
+
+    expect($version)->toBeInstanceOf(ApiVersion::class)
+        ->and($version->major)->toBe(2)
+        ->and($version->minor)->toBe(0);
+});

@@ -2,6 +2,7 @@
 
 use GaiaTools\ContentAccord\Routing\PendingVersionedRouteGroup;
 use Illuminate\Routing\Router;
+use Illuminate\Routing\RouteCollection;
 use Mockery as Mockery;
 
 afterEach(function () {
@@ -34,13 +35,18 @@ test('builds attributes for uri strategy with metadata and fallback', function (
 
     expect($attributes)->toMatchArray([
         'prefix' => 'api/v2',
-        'middleware' => ['auth', 'throttle'],
         'deprecated' => true,
         'sunset' => '2030-01-01',
         'deprecation_link' => 'https://example.test/deprecation',
         'api_version' => '2',
         'fallback_enabled' => true,
     ]);
+
+    expect($attributes['middleware'])
+        ->toContain('auth')
+        ->toContain('throttle')
+        ->toContain(\GaiaTools\ContentAccord\Http\Middleware\NegotiateContext::class)
+        ->toContain(\GaiaTools\ContentAccord\Http\Middleware\DeprecationHeaders::class);
 });
 
 test('builds attributes for header strategy without uri prefix', function () {
@@ -59,9 +65,9 @@ test('builds attributes for header strategy without uri prefix', function () {
 
     $attributes = $method->invoke($group);
 
-    expect($attributes)->toBe([
-        'api_version' => '1',
-    ]);
+    expect($attributes['api_version'])->toBe('1')
+        ->and($attributes['fallback_enabled'])->toBeFalse()
+        ->and($attributes['middleware'])->toContain(\GaiaTools\ContentAccord\Http\Middleware\NegotiateContext::class);
 });
 
 test('builds uri prefix when no custom prefix provided', function () {
@@ -81,7 +87,9 @@ test('builds uri prefix when no custom prefix provided', function () {
     $attributes = $method->invoke($group);
 
     expect($attributes['prefix'])->toBe('v4')
-        ->and($attributes['api_version'])->toBe('4');
+        ->and($attributes['api_version'])->toBe('4')
+        ->and($attributes['fallback_enabled'])->toBeFalse()
+        ->and($attributes['middleware'])->toContain(\GaiaTools\ContentAccord\Http\Middleware\NegotiateContext::class);
 });
 
 test('builds attributes for header strategy with custom prefix', function () {
@@ -102,7 +110,9 @@ test('builds attributes for header strategy with custom prefix', function () {
     $attributes = $method->invoke($group);
 
     expect($attributes['prefix'])->toBe('api')
-        ->and($attributes['api_version'])->toBe('1');
+        ->and($attributes['api_version'])->toBe('1')
+        ->and($attributes['fallback_enabled'])->toBeFalse()
+        ->and($attributes['middleware'])->toContain(\GaiaTools\ContentAccord\Http\Middleware\NegotiateContext::class);
 });
 
 test('group passes attributes to router', function () {
@@ -117,12 +127,17 @@ test('group passes attributes to router', function () {
     $group = new PendingVersionedRouteGroup($router, '3', $config);
     $group->prefix('api')->fallbackToVersion(false);
 
+    $router->shouldReceive('getRoutes')
+        ->twice()
+        ->andReturn(new RouteCollection());
+
     $router->shouldReceive('group')
         ->once()
         ->with(Mockery::on(function (array $attributes) {
             return $attributes['prefix'] === 'api/v3'
                 && $attributes['api_version'] === '3'
-                && $attributes['fallback_enabled'] === false;
+                && $attributes['fallback_enabled'] === false
+                && in_array(\GaiaTools\ContentAccord\Http\Middleware\NegotiateContext::class, $attributes['middleware'], true);
         }), Mockery::type(Closure::class));
 
     $group->group(function () {

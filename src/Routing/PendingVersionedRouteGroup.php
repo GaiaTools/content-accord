@@ -3,7 +3,14 @@
 namespace GaiaTools\ContentAccord\Routing;
 
 use Closure;
+use GaiaTools\ContentAccord\Attributes\ApiVersion as ApiVersionAttribute;
+use GaiaTools\ContentAccord\Attributes\MapToVersion;
+use GaiaTools\ContentAccord\Http\Middleware\DeprecationHeaders;
+use GaiaTools\ContentAccord\Http\Middleware\NegotiateContext;
+use GaiaTools\ContentAccord\ValueObjects\ApiVersion;
 use Illuminate\Routing\Router;
+use ReflectionClass;
+use Throwable;
 
 class PendingVersionedRouteGroup
 {
@@ -11,7 +18,7 @@ class PendingVersionedRouteGroup
 
     private array $middleware = [];
 
-    private bool $isDeprecated = false;
+    private ?bool $isDeprecated = null;
 
     private ?string $sunsetDate = null;
 
@@ -73,14 +80,21 @@ class PendingVersionedRouteGroup
 
     public function group(Closure $routes): void
     {
+        $existingRoutes = $this->router->getRoutes()->getRoutes();
+        $existingIds = array_flip(array_map('spl_object_id', $existingRoutes));
+
         $attributes = $this->buildGroupAttributes();
 
         $this->router->group($attributes, $routes);
+
+        $this->applyAttributeOverrides($existingIds);
     }
 
     private function buildGroupAttributes(): array
     {
         $strategy = $this->config['strategy'] ?? 'uri';
+        $versions = $this->config['versions'] ?? [];
+        $versionMetadata = $versions[$this->version] ?? [];
         $attributes = [];
 
         // Build prefix based on strategy
@@ -96,21 +110,34 @@ class PendingVersionedRouteGroup
             }
         }
 
-        // Add middleware
-        if (! empty($this->middleware)) {
-            $attributes['middleware'] = $this->middleware;
+        $deprecated = $this->isDeprecated;
+
+        if ($deprecated === null) {
+            $deprecated = (bool) ($versionMetadata['deprecated'] ?? false);
         }
 
+        // Add middleware
+        $middleware = $this->middleware;
+        $middleware[] = NegotiateContext::class;
+
+        if ($deprecated || $this->sunsetDate || $this->deprecationLink || ($versionMetadata['sunset'] ?? null) || ($versionMetadata['deprecation_link'] ?? null)) {
+            $middleware[] = DeprecationHeaders::class;
+        }
+
+        $attributes['middleware'] = array_values(array_unique($middleware));
+
         // Add deprecation metadata
-        if ($this->isDeprecated) {
+        if ($deprecated) {
             $attributes['deprecated'] = true;
 
-            if ($this->sunsetDate) {
-                $attributes['sunset'] = $this->sunsetDate;
+            $sunsetDate = $this->sunsetDate ?? ($versionMetadata['sunset'] ?? null);
+            if ($sunsetDate) {
+                $attributes['sunset'] = $sunsetDate;
             }
 
-            if ($this->deprecationLink) {
-                $attributes['deprecation_link'] = $this->deprecationLink;
+            $deprecationLink = $this->deprecationLink ?? ($versionMetadata['deprecation_link'] ?? null);
+            if ($deprecationLink) {
+                $attributes['deprecation_link'] = $deprecationLink;
             }
         }
 
@@ -118,10 +145,113 @@ class PendingVersionedRouteGroup
         $attributes['api_version'] = $this->version;
 
         // Add fallback setting if explicitly set
-        if ($this->fallbackEnabled !== null) {
-            $attributes['fallback_enabled'] = $this->fallbackEnabled;
-        }
+        $attributes['fallback_enabled'] = $this->fallbackEnabled ?? (bool) ($this->config['fallback'] ?? false);
 
         return $attributes;
+    }
+
+    private function applyAttributeOverrides(array $existingIds): void
+    {
+        $routes = $this->router->getRoutes()->getRoutes();
+
+        foreach ($routes as $route) {
+            if (isset($existingIds[spl_object_id($route)])) {
+                continue;
+            }
+
+            $action = $route->getAction();
+            $controller = $action['controller'] ?? null;
+
+            if (! is_string($controller)) {
+                continue;
+            }
+
+            [$class, $method] = $this->parseControllerAction($controller);
+
+            if (! class_exists($class)) {
+                continue;
+            }
+
+            $resolvedVersion = $this->resolveAttributeVersion($class, $method);
+
+            if ($resolvedVersion) {
+                $action['api_version'] = $resolvedVersion;
+            }
+
+            $route->setAction($action);
+        }
+    }
+
+    private function resolveAttributeVersion(string $class, string $method): ?string
+    {
+        $classReflection = new ReflectionClass($class);
+        $classVersion = $this->firstAttributeVersion($classReflection->getAttributes(ApiVersionAttribute::class));
+
+        $methodVersion = null;
+        if ($classReflection->hasMethod($method)) {
+            $methodReflection = $classReflection->getMethod($method);
+            $methodVersion = $this->firstAttributeVersion($methodReflection->getAttributes(MapToVersion::class));
+
+            if ($methodVersion === null) {
+                $methodVersion = $this->firstAttributeVersion($methodReflection->getAttributes(ApiVersionAttribute::class));
+            }
+        }
+
+        $resolved = $methodVersion ?? $classVersion;
+
+        if ($resolved) {
+            $this->warnOnVersionMismatch($resolved, $class, $method);
+        }
+
+        return $resolved;
+    }
+
+    private function firstAttributeVersion(array $attributes): ?string
+    {
+        if ($attributes === []) {
+            return null;
+        }
+
+        $instance = $attributes[0]->newInstance();
+
+        return $instance->version ?? null;
+    }
+
+    private function parseControllerAction(string $controller): array
+    {
+        if (str_contains($controller, '@')) {
+            return explode('@', $controller, 2);
+        }
+
+        return [$controller, '__invoke'];
+    }
+
+    private function warnOnVersionMismatch(string $resolvedVersion, string $class, string $method): void
+    {
+        try {
+            $groupVersion = ApiVersion::parse($this->version);
+            $attributeVersion = ApiVersion::parse($resolvedVersion);
+        } catch (Throwable) {
+            return;
+        }
+
+        if ($groupVersion->major === $attributeVersion->major) {
+            return;
+        }
+
+        if (! app()->bound('log')) {
+            return;
+        }
+
+        if (! app()->environment(['local', 'testing', 'development'])) {
+            return;
+        }
+
+        app('log')->warning('ContentAccord: Attribute version mismatch detected.', [
+            'group_version' => $this->version,
+            'attribute_version' => $resolvedVersion,
+            'controller' => $class,
+            'method' => $method,
+        ]);
     }
 }
