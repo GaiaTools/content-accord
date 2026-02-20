@@ -1,12 +1,17 @@
 <?php
 
 use GaiaTools\ContentAccord\ContentAccordServiceProvider;
+use GaiaTools\ContentAccord\Contracts\ContextResolver;
+use GaiaTools\ContentAccord\Contracts\NegotiationDimension;
 use GaiaTools\ContentAccord\Dimensions\VersioningDimension;
 use GaiaTools\ContentAccord\Resolvers\ChainedResolver;
 use GaiaTools\ContentAccord\Resolvers\Version\AcceptHeaderVersionResolver;
 use GaiaTools\ContentAccord\Resolvers\Version\HeaderVersionResolver;
 use GaiaTools\ContentAccord\Resolvers\Version\UriVersionResolver;
 use GaiaTools\ContentAccord\Routing\PendingVersionedRouteGroup;
+use GaiaTools\ContentAccord\Routing\VersionedRouteCollection;
+use GaiaTools\ContentAccord\Http\Middleware\NegotiateContext;
+use Illuminate\Http\Request;
 use Illuminate\Routing\Router;
 
 test('service provider registers router macro and publishes config', function () {
@@ -20,9 +25,22 @@ test('service provider registers router macro and publishes config', function ()
     expect($pending)->toBeInstanceOf(PendingVersionedRouteGroup::class);
 });
 
+test('service provider swaps in versioned route collection', function () {
+    $provider = app()->getProvider(ContentAccordServiceProvider::class);
+
+    $provider->boot();
+
+    $router = app(Router::class);
+
+    expect($router->getRoutes())->toBeInstanceOf(VersionedRouteCollection::class);
+});
+
 test('service provider builds chained resolver from configuration', function () {
     config([
-        'content-accord.versioning.chain' => ['uri', 'header'],
+        'content-accord.versioning.resolver' => [
+            \GaiaTools\ContentAccord\Resolvers\Version\UriVersionResolver::class,
+            \GaiaTools\ContentAccord\Resolvers\Version\HeaderVersionResolver::class,
+        ],
         'content-accord.versioning.strategies.uri.parameter' => 'version',
         'content-accord.versioning.strategies.header.name' => 'Api-Version',
     ]);
@@ -44,7 +62,7 @@ test('service provider builds chained resolver from configuration', function () 
 
 test('service provider falls back to uri resolver for unknown strategy', function () {
     config([
-        'content-accord.versioning.chain' => null,
+        'content-accord.versioning.resolver' => null,
         'content-accord.versioning.strategy' => 'unknown',
         'content-accord.versioning.strategies.uri.parameter' => 'version',
     ]);
@@ -58,7 +76,7 @@ test('service provider falls back to uri resolver for unknown strategy', functio
 
 test('service provider builds accept resolver for accept strategy', function () {
     config([
-        'content-accord.versioning.chain' => null,
+        'content-accord.versioning.resolver' => null,
         'content-accord.versioning.strategy' => 'accept',
         'content-accord.versioning.strategies.accept.vendor' => 'acme',
     ]);
@@ -114,3 +132,63 @@ test('service provider builds versioning dimension with parsed default version',
     expect($defaultVersion)->not->toBeNull()
         ->and($defaultVersion->major)->toBe(3);
 });
+
+test('service provider uses custom resolver when configured', function () {
+    config([
+        'content-accord.versioning.resolver' => CustomTestResolver::class,
+    ]);
+
+    app()->forgetInstance('content-accord.resolver');
+
+    $resolver = app('content-accord.resolver');
+
+    expect($resolver)->toBeInstanceOf(CustomTestResolver::class);
+});
+
+test('service provider resolves dimensions from configuration', function () {
+    config([
+        'content-accord.dimensions' => [CustomTestDimension::class],
+    ]);
+
+    app()->forgetInstance(NegotiateContext::class);
+
+    $middleware = app(NegotiateContext::class);
+
+    $property = new ReflectionProperty($middleware, 'dimensions');
+    $property->setAccessible(true);
+    $dimensions = $property->getValue($middleware);
+
+    expect($dimensions)->toHaveCount(1)
+        ->and($dimensions[0])->toBeInstanceOf(CustomTestDimension::class);
+});
+
+class CustomTestResolver implements ContextResolver
+{
+    public function resolve(Request $request): mixed
+    {
+        return null;
+    }
+}
+
+class CustomTestDimension implements NegotiationDimension
+{
+    public function key(): string
+    {
+        return 'custom';
+    }
+
+    public function resolver(): ContextResolver
+    {
+        return new CustomTestResolver();
+    }
+
+    public function validate(mixed $resolved, Request $request): bool
+    {
+        return true;
+    }
+
+    public function fallback(Request $request): mixed
+    {
+        return null;
+    }
+}
