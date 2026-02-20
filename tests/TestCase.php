@@ -2,6 +2,7 @@
 
 namespace GaiaTools\ContentAccord\Tests;
 
+use GaiaTools\ContentAccord\ContentAccordServiceProvider;
 use Orchestra\Testbench\TestCase as Orchestra;
 
 class TestCase extends Orchestra
@@ -9,7 +10,7 @@ class TestCase extends Orchestra
     protected function getPackageProviders($app): array
     {
         return [
-            // Will add ContentAccordServiceProvider later
+            ContentAccordServiceProvider::class,
         ];
     }
 

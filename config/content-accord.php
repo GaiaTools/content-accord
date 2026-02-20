@@ -3,6 +3,20 @@
 return [
     /*
     |--------------------------------------------------------------------------
+    | Negotiation Dimensions
+    |--------------------------------------------------------------------------
+    |
+    | List the dimension services that should be negotiated for each request.
+    | Each entry should be a container binding or class that implements
+    | GaiaTools\ContentAccord\Contracts\NegotiationDimension.
+    |
+    */
+    'dimensions' => [
+        GaiaTools\ContentAccord\Dimensions\VersioningDimension::class,
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | API Versioning Configuration
     |--------------------------------------------------------------------------
     |
@@ -25,17 +39,22 @@ return [
 
         /*
         |----------------------------------------------------------------------
-        | Chained Resolvers
+        | Resolver Configuration
         |----------------------------------------------------------------------
         |
-        | When using multiple strategies, define the priority order.
-        | Set to null to use only the default strategy.
-        | Example: ['uri', 'header', 'accept']
+        | Provide a custom resolver class or container binding, or an array
+        | of resolvers to be tried in order (first non-null wins).
+        | Available resolvers:
+        | - GaiaTools\ContentAccord\Resolvers\Version\UriVersionResolver
+        | - GaiaTools\ContentAccord\Resolvers\Version\HeaderVersionResolver
+        | - GaiaTools\ContentAccord\Resolvers\Version\AcceptHeaderVersionResolver
         |
         */
-        'chain' => env('CONTENT_ACCORD_VERSIONING_CHAIN')
-            ? explode(',', env('CONTENT_ACCORD_VERSIONING_CHAIN'))
-            : null,
+        'resolver' => [
+            GaiaTools\ContentAccord\Resolvers\Version\UriVersionResolver::class,
+            // GaiaTools\ContentAccord\Resolvers\Version\HeaderVersionResolver::class,
+            // GaiaTools\ContentAccord\Resolvers\Version\AcceptHeaderVersionResolver::class,
+        ],
 
         /*
         |----------------------------------------------------------------------
@@ -125,7 +144,8 @@ return [
     | Future Dimensions
     |--------------------------------------------------------------------------
     |
-    | Additional negotiation dimensions can be added here as sibling keys.
+    | Additional negotiation dimensions can be added here as sibling keys
+    | and referenced in the "dimensions" array above.
     | Examples:
     |
     | 'locale' => [

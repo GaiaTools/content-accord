@@ -2,18 +2,23 @@
 
 namespace GaiaTools\ContentAccord;
 
+use GaiaTools\ContentAccord\Commands\ListApiVersionsCommand;
 use GaiaTools\ContentAccord\Contracts\ContextResolver;
+use GaiaTools\ContentAccord\Contracts\NegotiationDimension;
 use GaiaTools\ContentAccord\Dimensions\VersioningDimension;
 use GaiaTools\ContentAccord\Enums\MissingVersionStrategy;
+use GaiaTools\ContentAccord\Http\Middleware\DeprecationHeaders;
+use GaiaTools\ContentAccord\Http\Middleware\NegotiateContext;
 use GaiaTools\ContentAccord\Http\NegotiatedContext;
 use GaiaTools\ContentAccord\Resolvers\ChainedResolver;
 use GaiaTools\ContentAccord\Resolvers\Version\AcceptHeaderVersionResolver;
 use GaiaTools\ContentAccord\Resolvers\Version\HeaderVersionResolver;
 use GaiaTools\ContentAccord\Resolvers\Version\UriVersionResolver;
-use GaiaTools\ContentAccord\Routing\PendingVersionedRouteGroup;
+use GaiaTools\ContentAccord\Routing\ApiVersionRegistrar;
 use GaiaTools\ContentAccord\ValueObjects\ApiVersion;
 use Illuminate\Routing\Router;
 use Illuminate\Support\ServiceProvider;
+use InvalidArgumentException;
 
 class ContentAccordServiceProvider extends ServiceProvider
 {
@@ -27,6 +32,13 @@ class ContentAccordServiceProvider extends ServiceProvider
         // Bind NegotiatedContext as scoped singleton
         $this->app->scoped(NegotiatedContext::class, function () {
             return new NegotiatedContext();
+        });
+
+        $this->app->bind(NegotiateContext::class, function ($app) {
+            return new NegotiateContext(
+                $this->resolveDimensions(),
+                $app->make(NegotiatedContext::class)
+            );
         });
 
         // Register resolver factory
@@ -46,28 +58,44 @@ class ContentAccordServiceProvider extends ServiceProvider
             __DIR__ . '/../config/content-accord.php' => config_path('content-accord.php'),
         ], 'content-accord-config');
 
-        // Register Route::apiVersion() macro
-        Router::macro('apiVersion', function (string $version) {
-            return new PendingVersionedRouteGroup(
-                app(Router::class),
-                $version,
-                config('content-accord.versioning')
-            );
-        });
+        $router = $this->app->make(Router::class);
+
+        $this->registerMiddlewareAliases($router);
+        $this->registerApiVersionMacro($router);
+
+        if ($this->app->runningInConsole()) {
+            $this->commands([
+                ListApiVersionsCommand::class,
+            ]);
+        }
+    }
+
+    private function registerMiddlewareAliases(Router $router): void
+    {
+        $router->aliasMiddleware('content-accord.negotiate', NegotiateContext::class);
+        $router->aliasMiddleware('content-accord.deprecate', DeprecationHeaders::class);
+    }
+
+    private function registerApiVersionMacro(Router $router): void
+    {
+        $config = config('content-accord.versioning');
+
+        (new ApiVersionRegistrar($router, $config, $this->app))->register();
     }
 
     private function createResolver(): ContextResolver
     {
         $config = config('content-accord.versioning');
-        $chain = $config['chain'];
+        $resolverConfig = $config['resolver'] ?? null;
 
-        if ($chain !== null && is_array($chain)) {
-            $resolvers = [];
-            foreach ($chain as $strategy) {
-                $resolvers[] = $this->createResolverForStrategy($strategy, $config);
-            }
+        if (is_array($resolverConfig)) {
+            $resolvers = array_map(fn ($resolver) => $this->resolveResolver($resolver, $config), $resolverConfig);
 
             return new ChainedResolver($resolvers);
+        }
+
+        if (is_string($resolverConfig) && $resolverConfig !== '') {
+            return $this->resolveResolver($resolverConfig, $config);
         }
 
         return $this->createResolverForStrategy($config['strategy'], $config);
@@ -81,6 +109,30 @@ class ContentAccordServiceProvider extends ServiceProvider
             'accept' => new AcceptHeaderVersionResolver($config['strategies']['accept']['vendor']),
             default => new UriVersionResolver($config['strategies']['uri']['parameter']),
         };
+    }
+
+    private function resolveResolver(mixed $resolver, array $config): ContextResolver
+    {
+        if ($resolver instanceof ContextResolver) {
+            return $resolver;
+        }
+
+        if (! is_string($resolver) || $resolver === '') {
+            throw new InvalidArgumentException('Configured resolver must be a class name, binding, or ContextResolver instance.');
+        }
+
+        $resolved = match ($resolver) {
+            UriVersionResolver::class => new UriVersionResolver($config['strategies']['uri']['parameter'] ?? 'version'),
+            HeaderVersionResolver::class => new HeaderVersionResolver($config['strategies']['header']['name'] ?? 'Api-Version'),
+            AcceptHeaderVersionResolver::class => new AcceptHeaderVersionResolver($config['strategies']['accept']['vendor'] ?? 'myapp'),
+            default => $this->app->make($resolver),
+        };
+
+        if (! $resolved instanceof ContextResolver) {
+            throw new InvalidArgumentException('Configured resolver must implement ContextResolver.');
+        }
+
+        return $resolved;
     }
 
     private function createVersioningDimension(): VersioningDimension
@@ -101,5 +153,40 @@ class ContentAccordServiceProvider extends ServiceProvider
             defaultVersion: $defaultVersion,
             supportedVersions: $supportedVersions
         );
+    }
+
+    /**
+     * @return NegotiationDimension[]
+     */
+    private function resolveDimensions(): array
+    {
+        $dimensions = config('content-accord.dimensions', [VersioningDimension::class]);
+
+        if (! is_array($dimensions)) {
+            throw new InvalidArgumentException('Configured dimensions must be an array.');
+        }
+
+        $resolved = [];
+
+        foreach ($dimensions as $dimension) {
+            if ($dimension instanceof NegotiationDimension) {
+                $resolved[] = $dimension;
+                continue;
+            }
+
+            if (! is_string($dimension) || $dimension === '') {
+                throw new InvalidArgumentException('Configured dimensions must be class names or instances.');
+            }
+
+            $instance = $this->app->make($dimension);
+
+            if (! $instance instanceof NegotiationDimension) {
+                throw new InvalidArgumentException('Configured dimension must implement NegotiationDimension.');
+            }
+
+            $resolved[] = $instance;
+        }
+
+        return $resolved;
     }
 }
