@@ -77,6 +77,15 @@ test('returns null for empty header value', function () {
     expect($resolver->resolve($request))->toBeNull();
 });
 
+test('returns null for whitespace header value', function () {
+    $request = Request::create('/api/users');
+    $request->headers->set('Api-Version', '   ');
+
+    $resolver = new HeaderVersionResolver('Api-Version');
+
+    expect($resolver->resolve($request))->toBeNull();
+});
+
 test('header name is case insensitive', function () {
     $request = Request::create('/api/users');
     $request->headers->set('api-version', '1');
