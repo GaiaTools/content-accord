@@ -3,6 +3,11 @@
 use GaiaTools\ContentAccord\Resolvers\Version\AcceptHeaderVersionResolver;
 use GaiaTools\ContentAccord\ValueObjects\ApiVersion;
 use Illuminate\Http\Request;
+use Mockery as Mockery;
+
+afterEach(function () {
+    Mockery::close();
+});
 
 test('extracts version from vendor media type format', function () {
     $request = Request::create('/api/users');
@@ -53,7 +58,17 @@ test('extracts version with minor from parameter format', function () {
 });
 
 test('returns null when accept header is missing', function () {
-    $request = Request::create('/api/users');
+    $request = Mockery::mock(Request::class);
+    $request->shouldReceive('header')->with('Accept')->andReturn(null);
+
+    $resolver = new AcceptHeaderVersionResolver('myapp');
+
+    expect($resolver->resolve($request))->toBeNull();
+});
+
+test('returns null when accept header is not a string', function () {
+    $request = Mockery::mock(Request::class);
+    $request->shouldReceive('header')->with('Accept')->andReturn(['application/json']);
 
     $resolver = new AcceptHeaderVersionResolver('myapp');
 
@@ -160,4 +175,13 @@ test('handles whitespace in parameter format', function () {
 
     expect($version)->toBeInstanceOf(ApiVersion::class)
         ->and($version->major)->toBe(1);
+});
+
+test('parseVersion returns null for invalid version strings', function () {
+    $resolver = new AcceptHeaderVersionResolver('myapp');
+    $closure = Closure::bind(function (string $versionString) {
+        return $this->parseVersion($versionString);
+    }, $resolver, $resolver);
+
+    expect($closure('invalid'))->toBeNull();
 });
