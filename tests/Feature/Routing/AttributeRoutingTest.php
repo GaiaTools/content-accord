@@ -21,11 +21,10 @@ class AttributeTestController
 
 test('attribute metadata overrides api version on routes', function () {
     config([
-        'content-accord.versioning.strategy' => 'header',
         'content-accord.versioning.strategies.header.name' => 'Api-Version',
     ]);
 
-    Route::apiVersion('2')->group(function () {
+    Route::middleware('content-accord.version:2')->group(function () {
         Route::get('/users', [AttributeTestController::class, 'index']);
         Route::get('/users/{id}', [AttributeTestController::class, 'show']);
     });

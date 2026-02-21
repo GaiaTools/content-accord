@@ -28,17 +28,6 @@ return [
     'versioning' => [
         /*
         |----------------------------------------------------------------------
-        | Default Resolution Strategy
-        |----------------------------------------------------------------------
-        |
-        | How to extract the API version from incoming requests.
-        | Supported: "uri", "header", "accept"
-        |
-        */
-        'strategy' => env('CONTENT_ACCORD_VERSIONING_STRATEGY', 'uri'),
-
-        /*
-        |----------------------------------------------------------------------
         | Resolver Configuration
         |----------------------------------------------------------------------
         |

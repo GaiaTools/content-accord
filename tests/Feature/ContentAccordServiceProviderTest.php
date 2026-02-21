@@ -5,25 +5,12 @@ use GaiaTools\ContentAccord\Contracts\ContextResolver;
 use GaiaTools\ContentAccord\Contracts\NegotiationDimension;
 use GaiaTools\ContentAccord\Dimensions\VersioningDimension;
 use GaiaTools\ContentAccord\Resolvers\ChainedResolver;
-use GaiaTools\ContentAccord\Resolvers\Version\AcceptHeaderVersionResolver;
 use GaiaTools\ContentAccord\Resolvers\Version\HeaderVersionResolver;
 use GaiaTools\ContentAccord\Resolvers\Version\UriVersionResolver;
-use GaiaTools\ContentAccord\Routing\PendingVersionedRouteGroup;
 use GaiaTools\ContentAccord\Routing\VersionedRouteCollection;
 use GaiaTools\ContentAccord\Http\Middleware\NegotiateContext;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Router;
-
-test('service provider registers router macro and publishes config', function () {
-    $provider = app()->getProvider(ContentAccordServiceProvider::class);
-
-    $provider->boot();
-
-    $router = app(Router::class);
-    $pending = $router->apiVersion('1');
-
-    expect($pending)->toBeInstanceOf(PendingVersionedRouteGroup::class);
-});
 
 test('service provider swaps in versioned route collection', function () {
     $provider = app()->getProvider(ContentAccordServiceProvider::class);
@@ -60,32 +47,14 @@ test('service provider builds chained resolver from configuration', function () 
         ->and($resolvers[1])->toBeInstanceOf(HeaderVersionResolver::class);
 });
 
-test('service provider falls back to uri resolver for unknown strategy', function () {
+test('service provider throws when no resolver is configured', function () {
     config([
         'content-accord.versioning.resolver' => null,
-        'content-accord.versioning.strategy' => 'unknown',
-        'content-accord.versioning.strategies.uri.parameter' => 'version',
     ]);
 
     app()->forgetInstance('content-accord.resolver');
 
-    $resolver = app('content-accord.resolver');
-
-    expect($resolver)->toBeInstanceOf(UriVersionResolver::class);
-});
-
-test('service provider builds accept resolver for accept strategy', function () {
-    config([
-        'content-accord.versioning.resolver' => null,
-        'content-accord.versioning.strategy' => 'accept',
-        'content-accord.versioning.strategies.accept.vendor' => 'acme',
-    ]);
-
-    app()->forgetInstance('content-accord.resolver');
-
-    $resolver = app('content-accord.resolver');
-
-    expect($resolver)->toBeInstanceOf(AcceptHeaderVersionResolver::class);
+    expect(fn () => app('content-accord.resolver'))->toThrow(InvalidArgumentException::class);
 });
 
 test('service provider builds versioning dimension with null default version', function () {

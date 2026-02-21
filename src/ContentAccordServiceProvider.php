@@ -3,18 +3,15 @@
 namespace GaiaTools\ContentAccord;
 
 use GaiaTools\ContentAccord\Commands\ListApiVersionsCommand;
-use GaiaTools\ContentAccord\Contracts\ContextResolver;
 use GaiaTools\ContentAccord\Contracts\NegotiationDimension;
 use GaiaTools\ContentAccord\Dimensions\VersioningDimension;
 use GaiaTools\ContentAccord\Enums\MissingVersionStrategy;
+use GaiaTools\ContentAccord\Http\Middleware\ApiVersionMetadata;
 use GaiaTools\ContentAccord\Http\Middleware\DeprecationHeaders;
 use GaiaTools\ContentAccord\Http\Middleware\NegotiateContext;
 use GaiaTools\ContentAccord\Http\NegotiatedContext;
-use GaiaTools\ContentAccord\Resolvers\ChainedResolver;
-use GaiaTools\ContentAccord\Resolvers\Version\AcceptHeaderVersionResolver;
-use GaiaTools\ContentAccord\Resolvers\Version\HeaderVersionResolver;
-use GaiaTools\ContentAccord\Resolvers\Version\UriVersionResolver;
 use GaiaTools\ContentAccord\Routing\ApiVersionRegistrar;
+use GaiaTools\ContentAccord\Resolvers\Version\VersionResolverFactory;
 use GaiaTools\ContentAccord\ValueObjects\ApiVersion;
 use Illuminate\Routing\Router;
 use Illuminate\Support\ServiceProvider;
@@ -41,15 +38,15 @@ class ContentAccordServiceProvider extends ServiceProvider
             );
         });
 
-        // Register resolver factory
-        $this->app->singleton('content-accord.resolver', function ($app) {
-            return $this->createResolver();
-        });
+        if ($this->usesVersioningDimension()) {
+            $this->app->singleton('content-accord.resolver', function ($app) {
+                return (new VersionResolverFactory($app, config('content-accord.versioning')))->build();
+            });
 
-        // Register versioning dimension
-        $this->app->singleton(VersioningDimension::class, function ($app) {
-            return $this->createVersioningDimension();
-        });
+            $this->app->singleton(VersioningDimension::class, function ($app) {
+                return $this->createVersioningDimension();
+            });
+        }
     }
 
     public function boot(): void
@@ -58,10 +55,12 @@ class ContentAccordServiceProvider extends ServiceProvider
             __DIR__ . '/../config/content-accord.php' => config_path('content-accord.php'),
         ], 'content-accord-config');
 
+        ApiVersionRegistrar::register();
+
         $router = $this->app->make(Router::class);
 
         $this->registerMiddlewareAliases($router);
-        $this->registerApiVersionMacro($router);
+        $this->registerVersionedRoutes($router);
 
         if ($this->app->runningInConsole()) {
             $this->commands([
@@ -74,71 +73,35 @@ class ContentAccordServiceProvider extends ServiceProvider
     {
         $router->aliasMiddleware('content-accord.negotiate', NegotiateContext::class);
         $router->aliasMiddleware('content-accord.deprecate', DeprecationHeaders::class);
+        $router->aliasMiddleware('content-accord.version', ApiVersionMetadata::class);
     }
 
-    private function registerApiVersionMacro(Router $router): void
+    private function registerVersionedRoutes(Router $router): void
     {
+        if (! $this->usesVersioningDimension()) {
+            return;
+        }
+
         $config = config('content-accord.versioning');
+        $routes = $router->getRoutes();
 
-        (new ApiVersionRegistrar($router, $config, $this->app))->register();
-    }
-
-    private function createResolver(): ContextResolver
-    {
-        $config = config('content-accord.versioning');
-        $resolverConfig = $config['resolver'] ?? null;
-
-        if (is_array($resolverConfig)) {
-            $resolvers = array_map(fn ($resolver) => $this->resolveResolver($resolver, $config), $resolverConfig);
-
-            return new ChainedResolver($resolvers);
+        if ($routes instanceof \GaiaTools\ContentAccord\Routing\VersionedRouteCollection) {
+            return;
         }
 
-        if (is_string($resolverConfig) && $resolverConfig !== '') {
-            return $this->resolveResolver($resolverConfig, $config);
-        }
-
-        return $this->createResolverForStrategy($config['strategy'], $config);
-    }
-
-    private function createResolverForStrategy(string $strategy, array $config): ContextResolver
-    {
-        return match ($strategy) {
-            'uri' => new UriVersionResolver($config['strategies']['uri']['parameter']),
-            'header' => new HeaderVersionResolver($config['strategies']['header']['name']),
-            'accept' => new AcceptHeaderVersionResolver($config['strategies']['accept']['vendor']),
-            default => new UriVersionResolver($config['strategies']['uri']['parameter']),
-        };
-    }
-
-    private function resolveResolver(mixed $resolver, array $config): ContextResolver
-    {
-        if ($resolver instanceof ContextResolver) {
-            return $resolver;
-        }
-
-        if (! is_string($resolver) || $resolver === '') {
-            throw new InvalidArgumentException('Configured resolver must be a class name, binding, or ContextResolver instance.');
-        }
-
-        $resolved = match ($resolver) {
-            UriVersionResolver::class => new UriVersionResolver($config['strategies']['uri']['parameter'] ?? 'version'),
-            HeaderVersionResolver::class => new HeaderVersionResolver($config['strategies']['header']['name'] ?? 'Api-Version'),
-            AcceptHeaderVersionResolver::class => new AcceptHeaderVersionResolver($config['strategies']['accept']['vendor'] ?? 'myapp'),
-            default => $this->app->make($resolver),
-        };
-
-        if (! $resolved instanceof ContextResolver) {
-            throw new InvalidArgumentException('Configured resolver must implement ContextResolver.');
-        }
-
-        return $resolved;
+        $router->setRoutes(
+            \GaiaTools\ContentAccord\Routing\VersionedRouteCollection::fromExisting(
+                $routes,
+                $config,
+                $this->app
+            )
+        );
     }
 
     private function createVersioningDimension(): VersioningDimension
     {
         $config = config('content-accord.versioning');
-        $resolver = app('content-accord.resolver');
+        $resolver = (new VersionResolverFactory($this->app, $config))->build();
 
         $missingStrategy = MissingVersionStrategy::from($config['missing_strategy']);
         $defaultVersion = $config['default_version']
@@ -153,6 +116,23 @@ class ContentAccordServiceProvider extends ServiceProvider
             defaultVersion: $defaultVersion,
             supportedVersions: $supportedVersions
         );
+    }
+
+    private function usesVersioningDimension(): bool
+    {
+        $dimensions = config('content-accord.dimensions', [VersioningDimension::class]);
+
+        if (! is_array($dimensions)) {
+            return false;
+        }
+
+        foreach ($dimensions as $dimension) {
+            if ($dimension instanceof VersioningDimension || $dimension === VersioningDimension::class) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
