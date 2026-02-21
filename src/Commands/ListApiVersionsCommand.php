@@ -3,6 +3,7 @@
 namespace GaiaTools\ContentAccord\Commands;
 
 use GaiaTools\ContentAccord\ValueObjects\ApiVersion;
+use GaiaTools\ContentAccord\Routing\RouteVersionMetadata;
 use Illuminate\Console\Command;
 use Illuminate\Routing\Router;
 use Symfony\Component\Console\Helper\Table;
@@ -52,7 +53,8 @@ class ListApiVersionsCommand extends Command
         $counts = [];
 
         foreach ($router->getRoutes()->getRoutes() as $route) {
-            $versionString = $route->getAction('api_version');
+            $metadata = RouteVersionMetadata::resolve($route, config('content-accord.versioning', []));
+            $versionString = $metadata['version'] ?? null;
 
             if (! is_string($versionString) || $versionString === '') {
                 continue;

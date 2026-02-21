@@ -2,6 +2,9 @@
 
 namespace GaiaTools\ContentAccord\Testing;
 
+use GaiaTools\ContentAccord\Resolvers\Version\AcceptHeaderVersionResolver;
+use GaiaTools\ContentAccord\Resolvers\Version\HeaderVersionResolver;
+use GaiaTools\ContentAccord\Routing\RouteVersionMetadata;
 use GaiaTools\ContentAccord\ValueObjects\ApiVersion;
 use Illuminate\Routing\Router;
 use Illuminate\Testing\TestResponse;
@@ -58,12 +61,14 @@ class ApiVersionRequestBuilder
 
     private function resolveUriAndHeaders(string $uri, array $headers, string $method): array
     {
-        $strategy = config('content-accord.versioning.strategy', 'uri');
+        $resolverConfig = config('content-accord.versioning.resolver');
         $strategies = config('content-accord.versioning.strategies', []);
 
-        return match ($strategy) {
-            'header' => [$uri, $this->withHeaderVersion($headers, $strategies)],
-            'accept' => [$uri, $this->withAcceptVersion($headers, $strategies)],
+        $firstResolver = is_array($resolverConfig) ? ($resolverConfig[0] ?? null) : $resolverConfig;
+
+        return match ($firstResolver) {
+            HeaderVersionResolver::class => [$uri, $this->withHeaderVersion($headers, $strategies)],
+            AcceptHeaderVersionResolver::class => [$uri, $this->withAcceptVersion($headers, $strategies)],
             default => [$this->withUriVersion($uri, $method, $strategies), $headers],
         };
     }
@@ -104,7 +109,8 @@ class ApiVersionRequestBuilder
                 continue;
             }
 
-            $routeVersion = $route->getAction('api_version');
+            $metadata = RouteVersionMetadata::resolve($route, config('content-accord.versioning', []));
+            $routeVersion = $metadata['version'] ?? null;
             if (! is_string($routeVersion) || $routeVersion === '') {
                 continue;
             }

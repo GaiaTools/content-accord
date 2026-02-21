@@ -6,16 +6,13 @@ use GaiaTools\ContentAccord\Contracts\ContextResolver;
 use GaiaTools\ContentAccord\Enums\MissingVersionStrategy;
 use GaiaTools\ContentAccord\Exceptions\MissingVersionException;
 use GaiaTools\ContentAccord\Exceptions\UnsupportedVersionException;
-use GaiaTools\ContentAccord\Resolvers\ChainedResolver;
-use GaiaTools\ContentAccord\Resolvers\Version\AcceptHeaderVersionResolver;
-use GaiaTools\ContentAccord\Resolvers\Version\HeaderVersionResolver;
-use GaiaTools\ContentAccord\Resolvers\Version\UriVersionResolver;
+use GaiaTools\ContentAccord\Resolvers\Version\VersionResolverFactory;
 use GaiaTools\ContentAccord\ValueObjects\ApiVersion;
+use GaiaTools\ContentAccord\Routing\RouteVersionMetadata;
 use Illuminate\Container\Container;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Route;
 use Illuminate\Routing\RouteCollection;
-use InvalidArgumentException;
 
 class VersionedRouteCollection extends RouteCollection
 {
@@ -159,12 +156,11 @@ class VersionedRouteCollection extends RouteCollection
      */
     private function buildVersionCandidates(array $routes): array
     {
-        $defaultFallback = (bool) ($this->config['fallback'] ?? false);
-
         $candidates = [];
 
         foreach ($routes as $route) {
-            $versionString = $route->getAction('api_version');
+            $metadata = RouteVersionMetadata::resolve($route, $this->config);
+            $versionString = $metadata['version'] ?? null;
 
             if (! is_string($versionString) || $versionString === '') {
                 continue;
@@ -173,7 +169,7 @@ class VersionedRouteCollection extends RouteCollection
             $candidates[] = [
                 'route' => $route,
                 'version' => ApiVersion::parse($versionString),
-                'fallback' => (bool) ($route->getAction('fallback_enabled') ?? $defaultFallback),
+                'fallback' => (bool) ($metadata['fallback'] ?? false),
             ];
         }
 
@@ -271,7 +267,7 @@ class VersionedRouteCollection extends RouteCollection
             return $this->resolver;
         }
 
-        if ($this->container->bound('content-accord.resolver')) {
+        if ($this->config === [] && $this->container->bound('content-accord.resolver')) {
             $this->resolver = $this->container->make('content-accord.resolver');
 
             return $this->resolver;
@@ -284,55 +280,40 @@ class VersionedRouteCollection extends RouteCollection
 
     private function buildResolverFromConfig(): ContextResolver
     {
-        $resolverConfig = $this->config['resolver'] ?? null;
-
-        if (is_array($resolverConfig)) {
-            $resolvers = array_map(fn ($resolver) => $this->resolveResolver($resolver), $resolverConfig);
-
-            return new ChainedResolver($resolvers);
-        }
-
-        if (is_string($resolverConfig) && $resolverConfig !== '') {
-            return $this->resolveResolver($resolverConfig);
-        }
-
-        $strategy = $this->config['strategy'] ?? 'uri';
-        $strategyConfig = $this->config['strategies'] ?? [];
-
-        return match ($strategy) {
-            'header' => new HeaderVersionResolver($strategyConfig['header']['name'] ?? 'Api-Version'),
-            'accept' => new AcceptHeaderVersionResolver($strategyConfig['accept']['vendor'] ?? 'myapp'),
-            default => new UriVersionResolver($strategyConfig['uri']['parameter'] ?? 'version'),
-        };
-    }
-
-    private function resolveResolver(mixed $resolver): ContextResolver
-    {
-        if ($resolver instanceof ContextResolver) {
-            return $resolver;
-        }
-
-        if (! is_string($resolver) || $resolver === '') {
-            throw new InvalidArgumentException('Configured resolver must be a class name, binding, or ContextResolver instance.');
-        }
-
-        $resolved = match ($resolver) {
-            UriVersionResolver::class => new UriVersionResolver($this->config['strategies']['uri']['parameter'] ?? 'version'),
-            HeaderVersionResolver::class => new HeaderVersionResolver($this->config['strategies']['header']['name'] ?? 'Api-Version'),
-            AcceptHeaderVersionResolver::class => new AcceptHeaderVersionResolver($this->config['strategies']['accept']['vendor'] ?? 'myapp'),
-            default => $this->container->make($resolver),
-        };
-
-        if (! $resolved instanceof ContextResolver) {
-            throw new InvalidArgumentException('Configured resolver must implement ContextResolver.');
-        }
-
-        return $resolved;
+        return (new VersionResolverFactory($this->container, $this->config))->build();
     }
 
     private function versionKey(Route $route): string
     {
         $version = $route->getAction('api_version');
+
+        if (! is_string($version) || $version === '') {
+            $metadata = RouteVersionMetadata::resolve($route, $this->config);
+            $version = $metadata['version'] ?? null;
+
+            if (is_string($version) && $version !== '') {
+                $action = $route->getAction();
+                $action['api_version'] = $version;
+
+                if (array_key_exists('deprecated', $metadata)) {
+                    $action['deprecated'] = $metadata['deprecated'];
+                }
+
+                if (array_key_exists('sunset', $metadata)) {
+                    $action['sunset'] = $metadata['sunset'];
+                }
+
+                if (array_key_exists('deprecation_link', $metadata)) {
+                    $action['deprecation_link'] = $metadata['deprecation_link'];
+                }
+
+                if (array_key_exists('fallback', $metadata)) {
+                    $action['fallback_enabled'] = $metadata['fallback'];
+                }
+
+                $route->setAction($action);
+            }
+        }
 
         if (! is_string($version) || $version === '') {
             return '';
