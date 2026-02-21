@@ -2,41 +2,14 @@
 
 namespace GaiaTools\ContentAccord\Routing;
 
-use Illuminate\Container\Container;
-use Illuminate\Routing\Router;
+use Illuminate\Support\Facades\Route;
 
-final readonly class ApiVersionRegistrar
+final class ApiVersionRegistrar
 {
-    public function __construct(
-        private Router $router,
-        private array $config,
-        private Container $container,
-    ) {
-    }
-
-    public function register(): void
+    public static function register(): void
     {
-        $this->ensureVersionedRouteCollection();
-
-        $this->router->macro('apiVersion', function (string $version) {
-            return new PendingVersionedRouteGroup(
-                $this,
-                $version,
-                config('content-accord.versioning')
-            );
+        Route::macro('apiVersion', function (string $version): RouteVersionBuilder {
+            return new RouteVersionBuilder($version);
         });
-    }
-
-    private function ensureVersionedRouteCollection(): void
-    {
-        $routes = $this->router->getRoutes();
-
-        if ($routes instanceof VersionedRouteCollection) {
-            return;
-        }
-
-        $this->router->setRoutes(
-            VersionedRouteCollection::fromExisting($routes, $this->config, $this->container)
-        );
     }
 }
