@@ -1,5 +1,6 @@
 <?php
 
+use GaiaTools\ContentAccord\Attributes\ApiNegotiate;
 use GaiaTools\ContentAccord\Contracts\ContextResolver;
 use GaiaTools\ContentAccord\Contracts\NegotiationDimension;
 use GaiaTools\ContentAccord\Dimensions\VersioningDimension;
@@ -11,6 +12,7 @@ use GaiaTools\ContentAccord\Http\NegotiatedContext;
 use GaiaTools\ContentAccord\Resolvers\Version\HeaderVersionResolver;
 use GaiaTools\ContentAccord\ValueObjects\ApiVersion;
 use Illuminate\Http\Request;
+use Illuminate\Routing\Route;
 
 test('populates negotiated context with resolved dimension values', function () {
     $context = new NegotiatedContext();
@@ -181,4 +183,222 @@ test('calls next closure and returns response', function () {
 
     expect($response->getContent())->toBe('Test Response')
         ->and($response->getStatusCode())->toBe(200);
+});
+
+test('skips dimensions configured on the route', function () {
+    $context = new NegotiatedContext();
+
+    $versionDimension = new class implements NegotiationDimension
+    {
+        public function key(): string
+        {
+            return 'version';
+        }
+
+        public function resolver(): ContextResolver
+        {
+            throw new RuntimeException('Version resolver should not be called.');
+        }
+
+        public function validate(mixed $resolved, Request $request): bool
+        {
+            return true;
+        }
+
+        public function fallback(Request $request): mixed
+        {
+            return null;
+        }
+    };
+
+    $localeDimension = new class implements NegotiationDimension
+    {
+        public function key(): string
+        {
+            return 'locale';
+        }
+
+        public function resolver(): ContextResolver
+        {
+            return new class implements ContextResolver
+            {
+                public function resolve(Request $request): mixed
+                {
+                    return 'en';
+                }
+            };
+        }
+
+        public function validate(mixed $resolved, Request $request): bool
+        {
+            return true;
+        }
+
+        public function fallback(Request $request): mixed
+        {
+            return 'en';
+        }
+    };
+
+    $middleware = new NegotiateContext([$versionDimension, $localeDimension], $context);
+
+    $request = Request::create('/test');
+    $route = new Route(['GET'], '/test', []);
+    $route->defaults('content_accord.skip', ['version']);
+    $request->setRouteResolver(fn () => $route);
+
+    $middleware->handle($request, fn ($req) => response('OK'));
+
+    expect($context->has('version'))->toBeFalse()
+        ->and($context->has('locale'))->toBeTrue()
+        ->and($context->get('locale'))->toBe('en');
+});
+
+test('only processes dimensions configured on the route', function () {
+    $context = new NegotiatedContext();
+
+    $versionDimension = new class implements NegotiationDimension
+    {
+        public function key(): string
+        {
+            return 'version';
+        }
+
+        public function resolver(): ContextResolver
+        {
+            throw new RuntimeException('Version resolver should not be called.');
+        }
+
+        public function validate(mixed $resolved, Request $request): bool
+        {
+            return true;
+        }
+
+        public function fallback(Request $request): mixed
+        {
+            return null;
+        }
+    };
+
+    $localeDimension = new class implements NegotiationDimension
+    {
+        public function key(): string
+        {
+            return 'locale';
+        }
+
+        public function resolver(): ContextResolver
+        {
+            return new class implements ContextResolver
+            {
+                public function resolve(Request $request): mixed
+                {
+                    return 'fr';
+                }
+            };
+        }
+
+        public function validate(mixed $resolved, Request $request): bool
+        {
+            return true;
+        }
+
+        public function fallback(Request $request): mixed
+        {
+            return 'en';
+        }
+    };
+
+    $middleware = new NegotiateContext([$versionDimension, $localeDimension], $context);
+
+    $request = Request::create('/test');
+    $route = new Route(['GET'], '/test', []);
+    $route->defaults('content_accord.only', ['locale']);
+    $request->setRouteResolver(fn () => $route);
+
+    $middleware->handle($request, fn ($req) => response('OK'));
+
+    expect($context->has('version'))->toBeFalse()
+        ->and($context->has('locale'))->toBeTrue()
+        ->and($context->get('locale'))->toBe('fr');
+});
+
+#[ApiNegotiate(only: ['locale'])]
+class NegotiateContextAttributeTestController
+{
+    public function index(): string
+    {
+        return 'ok';
+    }
+}
+
+test('#[ApiNegotiate] attribute filters dimensions via controller reflection', function () {
+    $context = new NegotiatedContext();
+
+    $versionDimension = new class implements NegotiationDimension
+    {
+        public function key(): string
+        {
+            return 'version';
+        }
+
+        public function resolver(): ContextResolver
+        {
+            throw new RuntimeException('Version resolver should not be called.');
+        }
+
+        public function validate(mixed $resolved, Request $request): bool
+        {
+            return true;
+        }
+
+        public function fallback(Request $request): mixed
+        {
+            return null;
+        }
+    };
+
+    $localeDimension = new class implements NegotiationDimension
+    {
+        public function key(): string
+        {
+            return 'locale';
+        }
+
+        public function resolver(): ContextResolver
+        {
+            return new class implements ContextResolver
+            {
+                public function resolve(Request $request): mixed
+                {
+                    return 'en';
+                }
+            };
+        }
+
+        public function validate(mixed $resolved, Request $request): bool
+        {
+            return true;
+        }
+
+        public function fallback(Request $request): mixed
+        {
+            return 'en';
+        }
+    };
+
+    $middleware = new NegotiateContext([$versionDimension, $localeDimension], $context);
+
+    $request = Request::create('/test');
+    $route = new Route(['GET'], '/test', []);
+    $action = $route->getAction();
+    $action['controller'] = NegotiateContextAttributeTestController::class . '@index';
+    $route->setAction($action);
+    $request->setRouteResolver(fn () => $route);
+
+    $middleware->handle($request, fn ($req) => response('OK'));
+
+    expect($context->has('version'))->toBeFalse()
+        ->and($context->has('locale'))->toBeTrue()
+        ->and($context->get('locale'))->toBe('en');
 });
