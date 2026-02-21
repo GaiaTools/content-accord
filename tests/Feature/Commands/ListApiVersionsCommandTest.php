@@ -13,7 +13,6 @@ class CommandTestController
 
 test('api versions command lists configured versions with route counts', function () {
     config([
-        'content-accord.versioning.strategy' => 'header',
         'content-accord.versioning.versions' => [
             '1' => [
                 'deprecated' => false,
@@ -28,11 +27,11 @@ test('api versions command lists configured versions with route counts', functio
         ],
     ]);
 
-    Route::apiVersion('1')->group(function () {
+    Route::middleware('content-accord.version:1')->group(function () {
         Route::get('/users', [CommandTestController::class, 'index']);
     });
 
-    Route::apiVersion('2')->group(function () {
+    Route::middleware('content-accord.version:2')->group(function () {
         Route::get('/users', [CommandTestController::class, 'index']);
         Route::get('/posts', [CommandTestController::class, 'index']);
     });

@@ -4,6 +4,7 @@ namespace GaiaTools\ContentAccord\Http\Middleware;
 
 use Closure;
 use DateTime;
+use GaiaTools\ContentAccord\Routing\RouteVersionMetadata;
 use Illuminate\Http\Request;
 
 final readonly class DeprecationHeaders
@@ -18,9 +19,8 @@ final readonly class DeprecationHeaders
             return $response;
         }
 
-        $action = $route->getAction();
-
-        $deprecated = $action['deprecated'] ?? false;
+        $metadata = RouteVersionMetadata::resolve($route, config('content-accord.versioning', []));
+        $deprecated = $metadata['deprecated'] ?? false;
 
         if (! $deprecated) {
             return $response;
@@ -30,14 +30,14 @@ final readonly class DeprecationHeaders
         $response->headers->set('Deprecation', 'true');
 
         // Add Sunset header if configured
-        if (isset($action['sunset'])) {
-            $sunsetDate = $this->formatSunsetDate($action['sunset']);
+        if (isset($metadata['sunset'])) {
+            $sunsetDate = $this->formatSunsetDate($metadata['sunset']);
             $response->headers->set('Sunset', $sunsetDate);
         }
 
         // Add Link header if deprecation documentation is available
-        if (isset($action['deprecation_link'])) {
-            $link = "<{$action['deprecation_link']}>; rel=\"deprecation\"";
+        if (isset($metadata['deprecation_link'])) {
+            $link = "<{$metadata['deprecation_link']}>; rel=\"deprecation\"";
             $response->headers->set('Link', $link);
         }
 
