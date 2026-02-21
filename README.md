@@ -46,31 +46,58 @@ Key settings:
 
 ## Usage
 
-### URI Strategy
+### Fluent Route Groups (Recommended)
+
+Use `Route::apiVersion()` to declare versioned route groups. The URI prefix is
+managed automatically based on your configured resolver strategy.
 
 ```php
 use Illuminate\Support\Facades\Route;
 
 Route::apiVersion('1')
     ->prefix('api')
+    ->middleware(['content-accord.negotiate'])
     ->group(function () {
         Route::get('/users', [V1\UserController::class, 'index']);
     });
 
 Route::apiVersion('2')
     ->prefix('api')
+    ->middleware(['content-accord.negotiate'])
     ->group(function () {
         Route::get('/users', [V2\UserController::class, 'index']);
+    });
+```
+
+With the URI strategy (default), the above registers at `/api/v1/users` and
+`/api/v2/users`. With header or Accept strategies, both register at `/api/users`
+and Content Accord selects the right route at dispatch time.
+
+Deprecation metadata is a fluent chain:
+
+```php
+Route::apiVersion('1')
+    ->prefix('api')
+    ->deprecated()
+    ->sunsetDate('2026-03-01')
+    ->deprecationLink('https://docs.example.com/v1-migration')
+    ->middleware(['content-accord.negotiate'])
+    ->group(function () {
+        Route::get('/users', [V1\UserController::class, 'index']);
     });
 ```
 
 ### Header Strategy
 
 ```php
-use Illuminate\Support\Facades\Route;
+// config/content-accord.php
+'versioning' => ['strategy' => 'header'],
+```
 
+```php
 Route::apiVersion('1')
     ->prefix('api')
+    ->middleware(['content-accord.negotiate'])
     ->group(function () {
         Route::get('/users', [V1\UserController::class, 'index']);
     });
@@ -132,9 +159,11 @@ Enable fallback globally or per group:
 
 // route group override
 Route::apiVersion('2')
-    ->fallbackToVersion(true)
+    ->prefix('api')
+    ->fallback()
+    ->middleware(['content-accord.negotiate'])
     ->group(function () {
-        // routes
+        Route::get('/users', [V2\UserController::class, 'index']);
     });
 ```
 
@@ -166,11 +195,13 @@ Mark version groups as deprecated and optionally add sunset dates and docs links
 
 ```php
 Route::apiVersion('1')
+    ->prefix('api')
     ->deprecated()
     ->sunsetDate('2026-03-01')
-    ->deprecationLink('https://docs.example.com/migration')
+    ->deprecationLink('https://docs.example.com/v1-migration')
+    ->middleware(['content-accord.deprecate', 'content-accord.negotiate'])
     ->group(function () {
-        // routes
+        Route::get('/users', [V1\UserController::class, 'index']);
     });
 ```
 
@@ -178,10 +209,24 @@ The `Deprecation`, `Sunset`, and `Link` headers are added automatically when dep
 
 ## Accessing the Negotiated Version
 
-A helper is available during requests:
+Use the `apiVersion()` helper in controllers or anywhere after the negotiate
+middleware has run:
 
 ```php
-$version = apiVersion();
+use GaiaTools\ContentAccord\ValueObjects\ApiVersion;
+
+public function index(): JsonResponse
+{
+    $version = apiVersion(); // ?ApiVersion
+}
+```
+
+Or inject `NegotiatedContext` directly:
+
+```php
+use GaiaTools\ContentAccord\Http\NegotiatedContext;
+
+$version = app(NegotiatedContext::class)->get('version');
 ```
 
 ## Testing Utilities
