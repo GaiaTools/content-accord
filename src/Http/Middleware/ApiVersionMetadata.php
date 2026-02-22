@@ -149,6 +149,7 @@ final readonly class ApiVersionMetadata
 
     /**
      * @template T of object
+     *
      * @param  array<int, ReflectionAttribute<T>>  $attributes
      * @return T|null
      */
@@ -178,6 +179,7 @@ final readonly class ApiVersionMetadata
     {
         if (str_contains($controller, '@')) {
             $parts = array_pad(explode('@', $controller, 2), 2, '__invoke');
+
             /** @var array{0: string, 1: string} $parts */
             return $parts;
         }

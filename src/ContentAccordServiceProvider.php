@@ -14,8 +14,8 @@ use GaiaTools\ContentAccord\Resolvers\Version\VersionResolverFactory;
 use GaiaTools\ContentAccord\Routing\ApiVersionRegistrar;
 use GaiaTools\ContentAccord\ValueObjects\ApiVersion;
 use Illuminate\Container\Container;
-use Illuminate\Routing\Router;
 use Illuminate\Routing\RouteCollection;
+use Illuminate\Routing\Router;
 use Illuminate\Support\ServiceProvider;
 use InvalidArgumentException;
 
