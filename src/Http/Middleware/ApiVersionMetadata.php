@@ -9,6 +9,7 @@ use GaiaTools\ContentAccord\Attributes\ApiVersion as ApiVersionAttribute;
 use GaiaTools\ContentAccord\Attributes\MapToVersion;
 use GaiaTools\ContentAccord\ValueObjects\ApiVersion;
 use Illuminate\Http\Request;
+use ReflectionAttribute;
 use ReflectionClass;
 use Throwable;
 
@@ -30,9 +31,13 @@ final readonly class ApiVersionMetadata
         }
 
         $action = $route->getAction();
+        if (! is_array($action)) {
+            $action = [];
+        }
         $controller = $action['controller'] ?? null;
 
         $resolvedVersion = null;
+        /** @var array{deprecated: ?bool, sunset: ?string, link: ?string, fallback: ?bool} $resolvedAttributeMetadata */
         $resolvedAttributeMetadata = [];
         if (is_string($controller)) {
             [$class, $method] = $this->parseControllerAction($controller);
@@ -91,6 +96,7 @@ final readonly class ApiVersionMetadata
      */
     private function resolveAttributeMetadata(string $class, string $method): array
     {
+        /** @var class-string $class */
         $classReflection = new ReflectionClass($class);
 
         $classDeprecate = $this->firstAttributeInstance($classReflection->getAttributes(ApiDeprecate::class));
@@ -118,6 +124,7 @@ final readonly class ApiVersionMetadata
 
     private function resolveAttributeVersion(string $class, string $method, ?string $groupVersion): ?string
     {
+        /** @var class-string $class */
         $classReflection = new ReflectionClass($class);
         $classVersion = $this->firstAttributeVersion($classReflection->getAttributes(ApiVersionAttribute::class));
 
@@ -140,11 +147,19 @@ final readonly class ApiVersionMetadata
         return $resolved;
     }
 
+    /**
+     * @template T of object
+     * @param  array<int, ReflectionAttribute<T>>  $attributes
+     * @return T|null
+     */
     private function firstAttributeInstance(array $attributes): ?object
     {
         return $attributes !== [] ? $attributes[0]->newInstance() : null;
     }
 
+    /**
+     * @param  array<int, ReflectionAttribute<ApiVersionAttribute|MapToVersion>>  $attributes
+     */
     private function firstAttributeVersion(array $attributes): ?string
     {
         if ($attributes === []) {
@@ -156,10 +171,15 @@ final readonly class ApiVersionMetadata
         return $instance->version ?? null;
     }
 
+    /**
+     * @return array{0: string, 1: string}
+     */
     private function parseControllerAction(string $controller): array
     {
         if (str_contains($controller, '@')) {
-            return explode('@', $controller, 2);
+            $parts = array_pad(explode('@', $controller, 2), 2, '__invoke');
+            /** @var array{0: string, 1: string} $parts */
+            return $parts;
         }
 
         return [$controller, '__invoke'];
@@ -187,7 +207,7 @@ final readonly class ApiVersionMetadata
         }
 
         app('log')->warning('ContentAccord: Attribute version mismatch detected.', [
-            'group_version' => $groupVersion?->toString(),
+            'group_version' => $groupVersion->toString(),
             'attribute_version' => $resolvedVersion,
             'controller' => $class,
             'method' => $method,
@@ -196,7 +216,7 @@ final readonly class ApiVersionMetadata
 
     /**
      * @param  string[]  $params
-     * @return array{version?: string, deprecated?: bool, sunsetDate?: string, deprecationLink?: string, fallbackEnabled?: bool}
+     * @return array{version?: string|null, deprecated?: bool|null, sunsetDate?: string|null, deprecationLink?: string|null, fallbackEnabled?: bool|null}
      */
     public static function parseParameters(array $params): array
     {

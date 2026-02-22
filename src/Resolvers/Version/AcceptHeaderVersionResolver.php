@@ -17,7 +17,7 @@ final readonly class AcceptHeaderVersionResolver implements VersionResolver
     {
         $acceptHeader = $request->header('Accept');
 
-        if (! $acceptHeader || ! is_string($acceptHeader)) {
+        if (! is_string($acceptHeader) || $acceptHeader === '') {
             return null;
         }
 

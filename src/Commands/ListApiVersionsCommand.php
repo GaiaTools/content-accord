@@ -16,7 +16,10 @@ class ListApiVersionsCommand extends Command
 
     public function handle(Router $router): int
     {
-        $versions = config('content-accord.versioning.versions', []);
+        $versions = config()->array('content-accord.versioning.versions', []);
+        $versions = array_filter($versions, static fn ($metadata) => is_array($metadata));
+        /** @var array<string, array<string, mixed>> $versions */
+        $versions = $versions;
 
         if ($versions === []) {
             $this->info('No API versions configured.');
@@ -50,10 +53,11 @@ class ListApiVersionsCommand extends Command
      */
     private function countRoutesByVersion(Router $router): array
     {
+        /** @var array<string, int> $counts */
         $counts = [];
 
         foreach ($router->getRoutes()->getRoutes() as $route) {
-            $metadata = RouteVersionMetadata::resolve($route, config('content-accord.versioning', []));
+            $metadata = RouteVersionMetadata::resolve($route, config()->array('content-accord.versioning', []));
             $versionString = $metadata['version'] ?? null;
 
             if (! is_string($versionString) || $versionString === '') {
@@ -66,6 +70,11 @@ class ListApiVersionsCommand extends Command
             $counts[$major] = ($counts[$major] ?? 0) + 1;
         }
 
-        return $counts;
+        $normalized = [];
+        foreach ($counts as $key => $value) {
+            $normalized[(string) $key] = $value;
+        }
+
+        return $normalized;
     }
 }

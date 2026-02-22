@@ -11,6 +11,7 @@ final class RouteVersionBuilder
 {
     private ?string $prefix = null;
 
+    /** @var array<int, string> */
     private array $extraMiddleware = [];
 
     private ?bool $deprecated = null;
@@ -30,6 +31,9 @@ final class RouteVersionBuilder
         return $this;
     }
 
+    /**
+     * @param  array<int, string>|string  $middleware
+     */
     public function middleware(array|string $middleware): static
     {
         $this->extraMiddleware = array_merge(
@@ -109,8 +113,11 @@ final class RouteVersionBuilder
     private function resolvePrefix(): string
     {
         if ($this->shouldAddVersionPrefix()) {
-            $uriConfig = config('content-accord.versioning.strategies.uri', []);
+            $uriConfig = config()->array('content-accord.versioning.strategies.uri', []);
             $versionPrefix = $uriConfig['prefix'] ?? 'v';
+            if (! is_string($versionPrefix) || $versionPrefix === '') {
+                $versionPrefix = 'v';
+            }
             $prefixPart = $this->prefix !== null && $this->prefix !== ''
                 ? rtrim($this->prefix, '/').'/'
                 : '';
@@ -123,7 +130,7 @@ final class RouteVersionBuilder
 
     private function shouldAddVersionPrefix(): bool
     {
-        $resolverConfig = config('content-accord.versioning.resolver');
+        $resolverConfig = config()->get('content-accord.versioning.resolver');
 
         if (is_array($resolverConfig)) {
             return in_array(UriVersionResolver::class, $resolverConfig, true);

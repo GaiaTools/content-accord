@@ -19,7 +19,7 @@ final readonly class DeprecationHeaders
             return $response;
         }
 
-        $metadata = RouteVersionMetadata::resolve($route, config('content-accord.versioning', []));
+        $metadata = RouteVersionMetadata::resolve($route, config()->array('content-accord.versioning', []));
         $deprecated = $metadata['deprecated'] ?? false;
 
         if (! $deprecated) {

@@ -6,16 +6,22 @@ use GaiaTools\ContentAccord\Resolvers\Version\AcceptHeaderVersionResolver;
 use GaiaTools\ContentAccord\Resolvers\Version\HeaderVersionResolver;
 use GaiaTools\ContentAccord\Routing\RouteVersionMetadata;
 use GaiaTools\ContentAccord\ValueObjects\ApiVersion;
+use Illuminate\Foundation\Testing\TestCase;
 use Illuminate\Routing\Router;
 use Illuminate\Testing\TestResponse;
+use Symfony\Component\HttpFoundation\Response;
 
 class ApiVersionRequestBuilder
 {
     public function __construct(
-        private object $testCase,
+        private TestCase $testCase,
         private string $version,
     ) {}
 
+    /**
+     * @param  array<string, string>  $headers
+     * @return TestResponse<Response>
+     */
     public function get(string $uri, array $headers = []): TestResponse
     {
         [$uri, $headers] = $this->resolveUriAndHeaders($uri, $headers, 'GET');
@@ -23,6 +29,11 @@ class ApiVersionRequestBuilder
         return $this->testCase->get($uri, $headers);
     }
 
+    /**
+     * @param  array<string, mixed>  $data
+     * @param  array<string, string>  $headers
+     * @return TestResponse<Response>
+     */
     public function post(string $uri, array $data = [], array $headers = []): TestResponse
     {
         [$uri, $headers] = $this->resolveUriAndHeaders($uri, $headers, 'POST');
@@ -30,6 +41,11 @@ class ApiVersionRequestBuilder
         return $this->testCase->post($uri, $data, $headers);
     }
 
+    /**
+     * @param  array<string, mixed>  $data
+     * @param  array<string, string>  $headers
+     * @return TestResponse<Response>
+     */
     public function put(string $uri, array $data = [], array $headers = []): TestResponse
     {
         [$uri, $headers] = $this->resolveUriAndHeaders($uri, $headers, 'PUT');
@@ -37,6 +53,11 @@ class ApiVersionRequestBuilder
         return $this->testCase->put($uri, $data, $headers);
     }
 
+    /**
+     * @param  array<string, mixed>  $data
+     * @param  array<string, string>  $headers
+     * @return TestResponse<Response>
+     */
     public function patch(string $uri, array $data = [], array $headers = []): TestResponse
     {
         [$uri, $headers] = $this->resolveUriAndHeaders($uri, $headers, 'PATCH');
@@ -44,6 +65,11 @@ class ApiVersionRequestBuilder
         return $this->testCase->patch($uri, $data, $headers);
     }
 
+    /**
+     * @param  array<string, mixed>  $data
+     * @param  array<string, string>  $headers
+     * @return TestResponse<Response>
+     */
     public function delete(string $uri, array $data = [], array $headers = []): TestResponse
     {
         [$uri, $headers] = $this->resolveUriAndHeaders($uri, $headers, 'DELETE');
@@ -51,6 +77,11 @@ class ApiVersionRequestBuilder
         return $this->testCase->delete($uri, $data, $headers);
     }
 
+    /**
+     * @param  array<string, mixed>  $data
+     * @param  array<string, string>  $headers
+     * @return TestResponse<Response>
+     */
     public function json(string $method, string $uri, array $data = [], array $headers = [], int $options = 0): TestResponse
     {
         [$uri, $headers] = $this->resolveUriAndHeaders($uri, $headers, strtoupper($method));
@@ -58,10 +89,16 @@ class ApiVersionRequestBuilder
         return $this->testCase->json($method, $uri, $data, $headers, $options);
     }
 
+    /**
+     * @param  array<string, string>  $headers
+     * @return array{0: string, 1: array<string, string>}
+     */
     private function resolveUriAndHeaders(string $uri, array $headers, string $method): array
     {
-        $resolverConfig = config('content-accord.versioning.resolver');
-        $strategies = config('content-accord.versioning.strategies', []);
+        $resolverConfig = config()->get('content-accord.versioning.resolver');
+        $strategies = config()->array('content-accord.versioning.strategies', []);
+        /** @var array<string, array<string, mixed>> $strategies */
+        $strategies = $strategies;
 
         $firstResolver = is_array($resolverConfig) ? ($resolverConfig[0] ?? null) : $resolverConfig;
 
@@ -72,20 +109,36 @@ class ApiVersionRequestBuilder
         };
     }
 
+    /**
+     * @param  array<string, string>  $headers
+     * @param  array<string, array<string, mixed>>  $strategies
+     * @return array<string, string>
+     */
     private function withHeaderVersion(array $headers, array $strategies): array
     {
         $headerName = $strategies['header']['name'] ?? 'Api-Version';
+        if (! is_string($headerName) || $headerName === '') {
+            $headerName = 'Api-Version';
+        }
         $headers[$headerName] = $this->version;
 
         return $headers;
     }
 
+    /**
+     * @param  array<string, string>  $headers
+     * @param  array<string, array<string, mixed>>  $strategies
+     * @return array<string, string>
+     */
     private function withAcceptVersion(array $headers, array $strategies): array
     {
         $vendor = $strategies['accept']['vendor'] ?? 'myapp';
+        if (! is_string($vendor) || $vendor === '') {
+            $vendor = 'myapp';
+        }
         $versionHeader = "application/vnd.{$vendor}.v{$this->version}+json";
 
-        if (isset($headers['Accept']) && is_string($headers['Accept']) && $headers['Accept'] !== '') {
+        if (isset($headers['Accept']) && $headers['Accept'] !== '') {
             $headers['Accept'] .= ", {$versionHeader}";
         } else {
             $headers['Accept'] = $versionHeader;
@@ -94,10 +147,16 @@ class ApiVersionRequestBuilder
         return $headers;
     }
 
+    /**
+     * @param  array<string, array<string, mixed>>  $strategies
+     */
     private function withUriVersion(string $uri, string $method, array $strategies): string
     {
         $router = app(Router::class);
         $prefix = $strategies['uri']['prefix'] ?? 'v';
+        if (! is_string($prefix) || $prefix === '') {
+            $prefix = 'v';
+        }
 
         $requestVersion = ApiVersion::parse($this->version);
         $targetMajor = $requestVersion->major;
@@ -108,7 +167,7 @@ class ApiVersionRequestBuilder
                 continue;
             }
 
-            $metadata = RouteVersionMetadata::resolve($route, config('content-accord.versioning', []));
+            $metadata = RouteVersionMetadata::resolve($route, config()->array('content-accord.versioning', []));
             $routeVersion = $metadata['version'] ?? null;
             if (! is_string($routeVersion) || $routeVersion === '') {
                 continue;

@@ -8,6 +8,7 @@ use GaiaTools\ContentAccord\Contracts\NegotiationDimension;
 use GaiaTools\ContentAccord\Http\NegotiatedContext;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Route;
+use ReflectionAttribute;
 use ReflectionClass;
 
 final readonly class NegotiateContext
@@ -48,10 +49,15 @@ final readonly class NegotiateContext
             return $this->dimensions;
         }
 
-        $defaults = is_array($route->defaults ?? null) ? $route->defaults : [];
+        /** @var array<string, mixed> $defaults */
+        $defaults = $route->defaults;
         $attr = $this->resolveNegotiateAttribute($route);
-        $only = $this->normalizeDimensionList($attr?->only ?? $defaults['content_accord.only'] ?? null);
-        $skip = $this->normalizeDimensionList($attr?->skip ?? $defaults['content_accord.skip'] ?? null);
+        $only = $this->normalizeDimensionList(
+            ($attr !== null ? $attr->only : null) ?? $defaults['content_accord.only'] ?? null
+        );
+        $skip = $this->normalizeDimensionList(
+            ($attr !== null ? $attr->skip : null) ?? $defaults['content_accord.skip'] ?? null
+        );
 
         $dimensions = $this->dimensions;
 
@@ -79,6 +85,9 @@ final readonly class NegotiateContext
         }
 
         $action = $route->getAction();
+        if (! is_array($action)) {
+            $action = [];
+        }
         $controller = $action['controller'] ?? null;
 
         if (! is_string($controller) || $controller === '') {
@@ -91,6 +100,7 @@ final readonly class NegotiateContext
             return null;
         }
 
+        /** @var class-string $class */
         $classReflection = new ReflectionClass($class);
         $classAttr = $this->firstAttributeInstance($classReflection->getAttributes(ApiNegotiate::class));
 
@@ -103,15 +113,25 @@ final readonly class NegotiateContext
         return $methodAttr ?? $classAttr;
     }
 
+    /**
+     * @template T of object
+     * @param  array<int, ReflectionAttribute<T>>  $attributes
+     * @return T|null
+     */
     private function firstAttributeInstance(array $attributes): ?object
     {
         return $attributes !== [] ? $attributes[0]->newInstance() : null;
     }
 
+    /**
+     * @return array{0: string, 1: string}
+     */
     private function parseControllerAction(string $controller): array
     {
         if (str_contains($controller, '@')) {
-            return explode('@', $controller, 2);
+            $parts = array_pad(explode('@', $controller, 2), 2, '__invoke');
+            /** @var array{0: string, 1: string} $parts */
+            return $parts;
         }
 
         return [$controller, '__invoke'];

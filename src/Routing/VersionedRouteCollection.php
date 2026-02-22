@@ -12,16 +12,23 @@ use Illuminate\Container\Container;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Route;
 use Illuminate\Routing\RouteCollection;
+use InvalidArgumentException;
 
 class VersionedRouteCollection extends RouteCollection
 {
-    private ?object $resolver = null;
+    private ?ContextResolver $resolver = null;
 
+    /**
+     * @param  array<string, mixed>  $config
+     */
     public function __construct(
         private array $config,
         private Container $container,
     ) {}
 
+    /**
+     * @param  array<string, mixed>  $config
+     */
     public static function fromExisting(RouteCollection $routes, array $config, Container $container): self
     {
         $collection = new self($config, $container);
@@ -108,6 +115,7 @@ class VersionedRouteCollection extends RouteCollection
 
     /**
      * @param  array<int, array{route: Route, version: ApiVersion, fallback: bool}>  $candidates
+     * @return array{route: Route, version: ApiVersion, fallback: bool}|null
      */
     private function findBestMatch(array $candidates, int $major): ?array
     {
@@ -191,7 +199,11 @@ class VersionedRouteCollection extends RouteCollection
 
     private function resolveMissingVersion(): ApiVersion
     {
-        $strategy = MissingVersionStrategy::from($this->config['missing_strategy'] ?? 'reject');
+        $strategyValue = $this->config['missing_strategy'] ?? 'reject';
+        if (! is_string($strategyValue) || $strategyValue === '') {
+            $strategyValue = 'reject';
+        }
+        $strategy = MissingVersionStrategy::from($strategyValue);
         $supported = $this->supportedVersions();
 
         return match ($strategy) {
@@ -205,6 +217,9 @@ class VersionedRouteCollection extends RouteCollection
         };
     }
 
+    /**
+     * @param  array<int, int>  $supported
+     */
     private function latestVersion(array $supported): ApiVersion
     {
         if ($supported === []) {
@@ -214,6 +229,9 @@ class VersionedRouteCollection extends RouteCollection
         return new ApiVersion(max($supported));
     }
 
+    /**
+     * @param  array<int, int>  $supported
+     */
     private function buildRequirementMessage(array $supported): string
     {
         if ($supported === []) {
@@ -244,6 +262,9 @@ class VersionedRouteCollection extends RouteCollection
     private function supportedVersions(): array
     {
         $versions = $this->config['versions'] ?? [];
+        if (! is_array($versions)) {
+            $versions = [];
+        }
 
         return array_map('intval', array_keys($versions));
     }
@@ -259,14 +280,18 @@ class VersionedRouteCollection extends RouteCollection
         return ApiVersion::parse($defaultVersion);
     }
 
-    private function resolver(): object
+    private function resolver(): ContextResolver
     {
         if ($this->resolver) {
             return $this->resolver;
         }
 
         if ($this->config === [] && $this->container->bound('content-accord.resolver')) {
-            $this->resolver = $this->container->make('content-accord.resolver');
+            $resolver = $this->container->make('content-accord.resolver');
+            if (! $resolver instanceof ContextResolver) {
+                throw new InvalidArgumentException('Configured resolver must implement ContextResolver.');
+            }
+            $this->resolver = $resolver;
 
             return $this->resolver;
         }
@@ -291,6 +316,9 @@ class VersionedRouteCollection extends RouteCollection
 
             if (is_string($version) && $version !== '') {
                 $action = $route->getAction();
+                if (! is_array($action)) {
+                    $action = [];
+                }
                 $action['api_version'] = $version;
 
                 if (array_key_exists('deprecated', $metadata)) {

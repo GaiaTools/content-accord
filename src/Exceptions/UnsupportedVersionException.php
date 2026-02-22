@@ -6,6 +6,9 @@ use GaiaTools\ContentAccord\ValueObjects\ApiVersion;
 
 class UnsupportedVersionException extends ApiVersionException
 {
+    /**
+     * @param  array<int, int>  $supportedVersions
+     */
     public static function forVersion(ApiVersion $version, array $supportedVersions = []): self
     {
         $message = "Unsupported API version: {$version}";

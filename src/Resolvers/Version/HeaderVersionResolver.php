@@ -17,7 +17,7 @@ final readonly class HeaderVersionResolver implements VersionResolver
     {
         $versionString = $request->header($this->headerName);
 
-        if (! $versionString || ! is_string($versionString)) {
+        if (! is_string($versionString) || $versionString === '') {
             return null;
         }
 

@@ -9,6 +9,9 @@ use InvalidArgumentException;
 
 final readonly class VersionResolverFactory
 {
+    /**
+     * @param  array<string, mixed>  $config
+     */
     public function __construct(
         private Container $container,
         private array $config,
@@ -41,13 +44,39 @@ final readonly class VersionResolverFactory
             throw new InvalidArgumentException('Configured resolver must be a class name, binding, or ContextResolver instance.');
         }
 
+        $strategies = $this->config['strategies'] ?? [];
+        if (! is_array($strategies)) {
+            $strategies = [];
+        }
+
+        $uri = is_array($strategies['uri'] ?? null) ? $strategies['uri'] : [];
+        $header = is_array($strategies['header'] ?? null) ? $strategies['header'] : [];
+        $accept = is_array($strategies['accept'] ?? null) ? $strategies['accept'] : [];
+
+        $uriParameter = $uri['parameter'] ?? 'version';
+        if (! is_string($uriParameter) || $uriParameter === '') {
+            $uriParameter = 'version';
+        }
+
+        $uriPrefix = $uri['prefix'] ?? 'v';
+        if (! is_string($uriPrefix) || $uriPrefix === '') {
+            $uriPrefix = 'v';
+        }
+
+        $headerName = $header['name'] ?? 'Api-Version';
+        if (! is_string($headerName) || $headerName === '') {
+            $headerName = 'Api-Version';
+        }
+
+        $vendor = $accept['vendor'] ?? 'myapp';
+        if (! is_string($vendor) || $vendor === '') {
+            $vendor = 'myapp';
+        }
+
         $resolved = match ($resolver) {
-            UriVersionResolver::class => new UriVersionResolver(
-                $this->config['strategies']['uri']['parameter'] ?? 'version',
-                $this->config['strategies']['uri']['prefix'] ?? 'v',
-            ),
-            HeaderVersionResolver::class => new HeaderVersionResolver($this->config['strategies']['header']['name'] ?? 'Api-Version'),
-            AcceptHeaderVersionResolver::class => new AcceptHeaderVersionResolver($this->config['strategies']['accept']['vendor'] ?? 'myapp'),
+            UriVersionResolver::class => new UriVersionResolver($uriParameter, $uriPrefix),
+            HeaderVersionResolver::class => new HeaderVersionResolver($headerName),
+            AcceptHeaderVersionResolver::class => new AcceptHeaderVersionResolver($vendor),
             default => $this->container->make($resolver),
         };
 

@@ -13,7 +13,9 @@ use GaiaTools\ContentAccord\Http\NegotiatedContext;
 use GaiaTools\ContentAccord\Resolvers\Version\VersionResolverFactory;
 use GaiaTools\ContentAccord\Routing\ApiVersionRegistrar;
 use GaiaTools\ContentAccord\ValueObjects\ApiVersion;
+use Illuminate\Container\Container;
 use Illuminate\Routing\Router;
+use Illuminate\Routing\RouteCollection;
 use Illuminate\Support\ServiceProvider;
 use InvalidArgumentException;
 
@@ -31,7 +33,7 @@ class ContentAccordServiceProvider extends ServiceProvider
             return new NegotiatedContext;
         });
 
-        $this->app->bind(NegotiateContext::class, function ($app) {
+        $this->app->bind(NegotiateContext::class, function (Container $app) {
             return new NegotiateContext(
                 $this->resolveDimensions(),
                 $app->make(NegotiatedContext::class)
@@ -39,11 +41,11 @@ class ContentAccordServiceProvider extends ServiceProvider
         });
 
         if ($this->usesVersioningDimension()) {
-            $this->app->singleton('content-accord.resolver', function ($app) {
-                return (new VersionResolverFactory($app, config('content-accord.versioning')))->build();
+            $this->app->singleton('content-accord.resolver', function (Container $app) {
+                return (new VersionResolverFactory($app, config()->array('content-accord.versioning')))->build();
             });
 
-            $this->app->singleton(VersioningDimension::class, function ($app) {
+            $this->app->singleton(VersioningDimension::class, function (Container $app) {
                 return $this->createVersioningDimension();
             });
         }
@@ -82,33 +84,49 @@ class ContentAccordServiceProvider extends ServiceProvider
             return;
         }
 
-        $config = config('content-accord.versioning');
+        $config = config()->array('content-accord.versioning');
         $routes = $router->getRoutes();
 
         if ($routes instanceof \GaiaTools\ContentAccord\Routing\VersionedRouteCollection) {
             return;
         }
 
+        if (! $routes instanceof RouteCollection) {
+            return;
+        }
+
+        /** @var Container $container */
+        $container = $this->app;
+
         $router->setRoutes(
             \GaiaTools\ContentAccord\Routing\VersionedRouteCollection::fromExisting(
                 $routes,
                 $config,
-                $this->app
+                $container
             )
         );
     }
 
     private function createVersioningDimension(): VersioningDimension
     {
-        $config = config('content-accord.versioning');
-        $resolver = (new VersionResolverFactory($this->app, $config))->build();
+        $config = config()->array('content-accord.versioning');
+        /** @var Container $container */
+        $container = $this->app;
+        $resolver = (new VersionResolverFactory($container, $config))->build();
 
-        $missingStrategy = MissingVersionStrategy::from($config['missing_strategy']);
-        $defaultVersion = $config['default_version']
-            ? ApiVersion::parse($config['default_version'])
+        $missingStrategy = MissingVersionStrategy::from(
+            config()->string('content-accord.versioning.missing_strategy', 'reject')
+        );
+        $defaultVersionValue = config()->string('content-accord.versioning.default_version', '');
+        $defaultVersion = $defaultVersionValue !== ''
+            ? ApiVersion::parse($defaultVersionValue)
             : null;
 
-        $supportedVersions = array_map('intval', array_keys($config['versions']));
+        $versions = $config['versions'] ?? [];
+        if (! is_array($versions)) {
+            $versions = [];
+        }
+        $supportedVersions = array_map('intval', array_keys($versions));
 
         return new VersioningDimension(
             resolver: $resolver,
@@ -120,11 +138,7 @@ class ContentAccordServiceProvider extends ServiceProvider
 
     private function usesVersioningDimension(): bool
     {
-        $dimensions = config('content-accord.dimensions', [VersioningDimension::class]);
-
-        if (! is_array($dimensions)) {
-            return false;
-        }
+        $dimensions = config()->array('content-accord.dimensions', [VersioningDimension::class]);
 
         foreach ($dimensions as $dimension) {
             if ($dimension instanceof VersioningDimension || $dimension === VersioningDimension::class) {
@@ -140,11 +154,7 @@ class ContentAccordServiceProvider extends ServiceProvider
      */
     private function resolveDimensions(): array
     {
-        $dimensions = config('content-accord.dimensions', [VersioningDimension::class]);
-
-        if (! is_array($dimensions)) {
-            throw new InvalidArgumentException('Configured dimensions must be an array.');
-        }
+        $dimensions = config()->array('content-accord.dimensions', [VersioningDimension::class]);
 
         $resolved = [];
 

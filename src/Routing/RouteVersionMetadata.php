@@ -9,17 +9,22 @@ use GaiaTools\ContentAccord\Attributes\MapToVersion;
 use GaiaTools\ContentAccord\Http\Middleware\ApiVersionMetadata;
 use GaiaTools\ContentAccord\ValueObjects\ApiVersion;
 use Illuminate\Routing\Route;
+use ReflectionAttribute;
 use ReflectionClass;
 use Throwable;
 
 final class RouteVersionMetadata
 {
     /**
+     * @param  array<string, mixed>  $config
      * @return array{version?: string, deprecated?: bool, sunset?: string, deprecation_link?: string, fallback?: bool}
      */
     public static function resolve(Route $route, array $config = []): array
     {
         $action = $route->getAction();
+        if (! is_array($action)) {
+            $action = [];
+        }
 
         $version = self::normalizeString($action['api_version'] ?? null);
         $deprecated = array_key_exists('deprecated', $action) ? (bool) $action['deprecated'] : null;
@@ -149,7 +154,7 @@ final class RouteVersionMetadata
 
             $resolved = [];
 
-            if (isset($parsed['version']) && $parsed['version'] !== null && $parsed['version'] !== '') {
+            if (isset($parsed['version']) && $parsed['version'] !== '') {
                 $resolved['version'] = $parsed['version'];
             }
 
@@ -157,11 +162,11 @@ final class RouteVersionMetadata
                 $resolved['deprecated'] = $parsed['deprecated'];
             }
 
-            if (isset($parsed['sunsetDate']) && $parsed['sunsetDate'] !== null && $parsed['sunsetDate'] !== '') {
+            if (isset($parsed['sunsetDate']) && $parsed['sunsetDate'] !== '') {
                 $resolved['sunset'] = $parsed['sunsetDate'];
             }
 
-            if (isset($parsed['deprecationLink']) && $parsed['deprecationLink'] !== null && $parsed['deprecationLink'] !== '') {
+            if (isset($parsed['deprecationLink']) && $parsed['deprecationLink'] !== '') {
                 $resolved['deprecation_link'] = $parsed['deprecationLink'];
             }
 
@@ -181,6 +186,9 @@ final class RouteVersionMetadata
     private static function resolveAttributeMetadata(Route $route): array
     {
         $action = $route->getAction();
+        if (! is_array($action)) {
+            $action = [];
+        }
         $controller = $action['controller'] ?? null;
 
         if (! is_string($controller) || $controller === '') {
@@ -193,6 +201,7 @@ final class RouteVersionMetadata
             return ['deprecated' => null, 'sunset' => null, 'link' => null, 'fallback' => null];
         }
 
+        /** @var class-string $class */
         $classReflection = new ReflectionClass($class);
 
         $classDeprecate = self::firstAttributeInstance($classReflection->getAttributes(ApiDeprecate::class));
@@ -221,6 +230,9 @@ final class RouteVersionMetadata
     private static function resolveAttributeVersion(Route $route): ?string
     {
         $action = $route->getAction();
+        if (! is_array($action)) {
+            $action = [];
+        }
         $controller = $action['controller'] ?? null;
 
         if (! is_string($controller) || $controller === '') {
@@ -233,6 +245,7 @@ final class RouteVersionMetadata
             return null;
         }
 
+        /** @var class-string $class */
         $classReflection = new ReflectionClass($class);
         $classVersion = self::firstAttributeVersion($classReflection->getAttributes(ApiVersionAttribute::class));
 
@@ -249,6 +262,10 @@ final class RouteVersionMetadata
         return $methodVersion ?? $classVersion;
     }
 
+    /**
+     * @param  array<string, mixed>  $config
+     * @return array{deprecated?: bool, sunset?: ?string, deprecation_link?: ?string}
+     */
     private static function resolveConfigMetadata(string $version, array $config): array
     {
         try {
@@ -258,24 +275,41 @@ final class RouteVersionMetadata
         }
 
         $versions = $config['versions'] ?? [];
+        if (! is_array($versions)) {
+            return [];
+        }
         $metadata = $versions[(string) $parsed->major] ?? null;
 
         if (! is_array($metadata)) {
             return [];
         }
 
+        $deprecated = (bool) ($metadata['deprecated'] ?? false);
+        $sunset = isset($metadata['sunset']) && is_string($metadata['sunset']) ? $metadata['sunset'] : null;
+        $link = isset($metadata['deprecation_link']) && is_string($metadata['deprecation_link'])
+            ? $metadata['deprecation_link']
+            : null;
+
         return [
-            'deprecated' => $metadata['deprecated'] ?? false,
-            'sunset' => $metadata['sunset'] ?? null,
-            'deprecation_link' => $metadata['deprecation_link'] ?? null,
+            'deprecated' => $deprecated,
+            'sunset' => $sunset,
+            'deprecation_link' => $link,
         ];
     }
 
+    /**
+     * @template T of object
+     * @param  array<int, ReflectionAttribute<T>>  $attributes
+     * @return T|null
+     */
     private static function firstAttributeInstance(array $attributes): ?object
     {
         return $attributes !== [] ? $attributes[0]->newInstance() : null;
     }
 
+    /**
+     * @param  array<int, ReflectionAttribute<ApiVersionAttribute|MapToVersion>>  $attributes
+     */
     private static function firstAttributeVersion(array $attributes): ?string
     {
         if ($attributes === []) {
@@ -287,10 +321,15 @@ final class RouteVersionMetadata
         return $instance->version ?? null;
     }
 
+    /**
+     * @return array{0: string, 1: string}
+     */
     private static function parseControllerAction(string $controller): array
     {
         if (str_contains($controller, '@')) {
-            return explode('@', $controller, 2);
+            $parts = array_pad(explode('@', $controller, 2), 2, '__invoke');
+            /** @var array{0: string, 1: string} $parts */
+            return $parts;
         }
 
         return [$controller, '__invoke'];

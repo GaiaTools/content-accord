@@ -66,6 +66,10 @@ final readonly class VersioningDimension implements NegotiationDimension
 
     private function resolveLatestVersion(): ApiVersion
     {
+        if ($this->supportedVersions === []) {
+            throw new MissingVersionException('No supported versions configured');
+        }
+
         $latestMajor = max($this->supportedVersions);
 
         return new ApiVersion($latestMajor);

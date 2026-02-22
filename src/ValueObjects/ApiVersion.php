@@ -27,6 +27,9 @@ final readonly class ApiVersion implements Stringable
 
         // Remove optional 'v' prefix
         $normalized = preg_replace('/^v/i', '', $value);
+        if ($normalized === null) {
+            throw InvalidVersionFormatException::forValue($value);
+        }
 
         // Match version pattern: major or major.minor
         if (! preg_match('/^(-?\d+)(?:\.(\d+))?$/', $normalized, $matches)) {
