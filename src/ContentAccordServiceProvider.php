@@ -117,10 +117,17 @@ class ContentAccordServiceProvider extends ServiceProvider
         $missingStrategy = MissingVersionStrategy::from(
             config()->string('content-accord.versioning.missing_strategy', 'reject')
         );
-        $defaultVersionValue = config()->string('content-accord.versioning.default_version', '');
-        $defaultVersion = $defaultVersionValue !== ''
-            ? ApiVersion::parse($defaultVersionValue)
-            : null;
+        $defaultVersionValue = config('content-accord.versioning.default_version');
+        if ($defaultVersionValue === null || $defaultVersionValue === '') {
+            $defaultVersion = null;
+        } elseif (is_string($defaultVersionValue) || is_int($defaultVersionValue)) {
+            $defaultVersion = ApiVersion::parse((string) $defaultVersionValue);
+        } else {
+            throw new InvalidArgumentException(sprintf(
+                'Configuration value for key [content-accord.versioning.default_version] must be a string or null, %s given.',
+                gettype($defaultVersionValue)
+            ));
+        }
 
         $versions = $config['versions'] ?? [];
         if (! is_array($versions)) {
