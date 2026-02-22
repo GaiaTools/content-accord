@@ -9,6 +9,5 @@ final readonly class MapToVersion
 {
     public function __construct(
         public string $version,
-    ) {
-    }
+    ) {}
 }

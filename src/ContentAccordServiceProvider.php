@@ -10,8 +10,8 @@ use GaiaTools\ContentAccord\Http\Middleware\ApiVersionMetadata;
 use GaiaTools\ContentAccord\Http\Middleware\DeprecationHeaders;
 use GaiaTools\ContentAccord\Http\Middleware\NegotiateContext;
 use GaiaTools\ContentAccord\Http\NegotiatedContext;
-use GaiaTools\ContentAccord\Routing\ApiVersionRegistrar;
 use GaiaTools\ContentAccord\Resolvers\Version\VersionResolverFactory;
+use GaiaTools\ContentAccord\Routing\ApiVersionRegistrar;
 use GaiaTools\ContentAccord\ValueObjects\ApiVersion;
 use Illuminate\Routing\Router;
 use Illuminate\Support\ServiceProvider;
@@ -22,13 +22,13 @@ class ContentAccordServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->mergeConfigFrom(
-            __DIR__ . '/../config/content-accord.php',
+            __DIR__.'/../config/content-accord.php',
             'content-accord'
         );
 
         // Bind NegotiatedContext as scoped singleton
         $this->app->scoped(NegotiatedContext::class, function () {
-            return new NegotiatedContext();
+            return new NegotiatedContext;
         });
 
         $this->app->bind(NegotiateContext::class, function ($app) {
@@ -52,7 +52,7 @@ class ContentAccordServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->publishes([
-            __DIR__ . '/../config/content-accord.php' => config_path('content-accord.php'),
+            __DIR__.'/../config/content-accord.php' => config_path('content-accord.php'),
         ], 'content-accord-config');
 
         ApiVersionRegistrar::register();
@@ -151,6 +151,7 @@ class ContentAccordServiceProvider extends ServiceProvider
         foreach ($dimensions as $dimension) {
             if ($dimension instanceof NegotiationDimension) {
                 $resolved[] = $dimension;
+
                 continue;
             }
 

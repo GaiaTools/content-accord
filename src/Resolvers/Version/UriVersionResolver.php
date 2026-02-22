@@ -12,8 +12,7 @@ final readonly class UriVersionResolver implements VersionResolver
     public function __construct(
         private string $parameterName = 'version',
         private string $prefix = 'v',
-    ) {
-    }
+    ) {}
 
     public function resolve(Request $request): ?ApiVersion
     {

@@ -49,6 +49,6 @@ final readonly class DeprecationHeaders
         // Convert to RFC 7231 format (HTTP date)
         $dateTime = new DateTime($date);
 
-        return $dateTime->format('D, d M Y H:i:s') . ' GMT';
+        return $dateTime->format('D, d M Y H:i:s').' GMT';
     }
 }

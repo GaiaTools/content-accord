@@ -11,8 +11,7 @@ final readonly class AcceptHeaderVersionResolver implements VersionResolver
 {
     public function __construct(
         private string $vendor,
-    ) {
-    }
+    ) {}
 
     public function resolve(Request $request): ?ApiVersion
     {
@@ -40,14 +39,14 @@ final readonly class AcceptHeaderVersionResolver implements VersionResolver
     {
         // Try vendor format: application/vnd.{vendor}.v{version}+{format}
         // Or: application/vnd.{vendor}.v{version}
-        $vendorPattern = '/^application\/vnd\.' . preg_quote($this->vendor, '/') . '\.v([\d.]+)(?:\+\w+)?/i';
+        $vendorPattern = '/^application\/vnd\.'.preg_quote($this->vendor, '/').'\.v([\d.]+)(?:\+\w+)?/i';
 
         if (preg_match($vendorPattern, $mediaType, $matches)) {
             return $this->parseVersion($matches[1]);
         }
 
         // Try parameter format: application/vnd.{vendor}+{format};version={version}
-        $parameterPattern = '/^application\/vnd\.' . preg_quote($this->vendor, '/') . '(?:\+\w+)?;\s*version=([\d.]+)/i';
+        $parameterPattern = '/^application\/vnd\.'.preg_quote($this->vendor, '/').'(?:\+\w+)?;\s*version=([\d.]+)/i';
 
         if (preg_match($parameterPattern, $mediaType, $matches)) {
             return $this->parseVersion($matches[1]);

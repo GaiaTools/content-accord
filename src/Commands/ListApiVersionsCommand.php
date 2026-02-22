@@ -2,8 +2,8 @@
 
 namespace GaiaTools\ContentAccord\Commands;
 
-use GaiaTools\ContentAccord\ValueObjects\ApiVersion;
 use GaiaTools\ContentAccord\Routing\RouteVersionMetadata;
+use GaiaTools\ContentAccord\ValueObjects\ApiVersion;
 use Illuminate\Console\Command;
 use Illuminate\Routing\Router;
 use Symfony\Component\Console\Helper\Table;

@@ -60,7 +60,7 @@ function makeControllerRoute(string $controllerClass, string $method = 'index'):
 {
     $route = new Route('GET', '/users', fn () => 'ok');
     $action = $route->getAction();
-    $action['controller'] = $controllerClass . '@' . $method;
+    $action['controller'] = $controllerClass.'@'.$method;
     $route->setAction($action);
     $route->setContainer(app());
 

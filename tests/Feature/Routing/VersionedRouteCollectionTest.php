@@ -248,7 +248,7 @@ test('#[ApiFallback(false)] attribute disables fallback in collection', function
 
     $v2Route = new Route('GET', '/users', fn () => 'v2');
     $action = $v2Route->getAction();
-    $action['controller'] = VersionedCollectionFallbackDisabledController::class . '@index';
+    $action['controller'] = VersionedCollectionFallbackDisabledController::class.'@index';
     $v2Route->setAction($action);
     $v2Route->setContainer(app());
     $collection->add($v2Route);
@@ -278,7 +278,7 @@ test('#[ApiFallback] attribute enables fallback in collection', function () {
 
     $v2Route = new Route('GET', '/users', fn () => 'v2');
     $action = $v2Route->getAction();
-    $action['controller'] = VersionedCollectionFallbackEnabledController::class . '@index';
+    $action['controller'] = VersionedCollectionFallbackEnabledController::class.'@index';
     $v2Route->setAction($action);
     $v2Route->setContainer(app());
     $collection->add($v2Route);

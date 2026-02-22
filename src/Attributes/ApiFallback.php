@@ -9,6 +9,5 @@ final readonly class ApiFallback
 {
     public function __construct(
         public bool $enabled = true,
-    ) {
-    }
+    ) {}
 }

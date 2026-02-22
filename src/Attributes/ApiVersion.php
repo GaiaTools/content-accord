@@ -9,6 +9,5 @@ final readonly class ApiVersion
 {
     public function __construct(
         public string $version,
-    ) {
-    }
+    ) {}
 }

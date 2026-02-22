@@ -31,8 +31,8 @@ test('attribute metadata overrides api version on routes', function () {
 
     $routes = collect(app('router')->getRoutes()->getRoutes());
 
-    $indexRoute = $routes->first(fn ($route) => $route->getAction('controller') === AttributeTestController::class . '@index');
-    $showRoute = $routes->first(fn ($route) => $route->getAction('controller') === AttributeTestController::class . '@show');
+    $indexRoute = $routes->first(fn ($route) => $route->getAction('controller') === AttributeTestController::class.'@index');
+    $showRoute = $routes->first(fn ($route) => $route->getAction('controller') === AttributeTestController::class.'@show');
 
     expect($indexRoute)->not->toBeNull()
         ->and($indexRoute->getAction('api_version'))->toBe('2')

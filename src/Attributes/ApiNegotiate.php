@@ -10,6 +10,5 @@ final readonly class ApiNegotiate
     public function __construct(
         public ?array $only = null,
         public ?array $skip = null,
-    ) {
-    }
+    ) {}
 }

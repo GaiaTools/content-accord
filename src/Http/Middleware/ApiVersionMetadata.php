@@ -110,9 +110,9 @@ final readonly class ApiVersionMetadata
 
         return [
             'deprecated' => $deprecate?->deprecated,
-            'sunset'     => $deprecate?->sunset,
-            'link'       => $deprecate?->link,
-            'fallback'   => $fallback?->enabled,
+            'sunset' => $deprecate?->sunset,
+            'link' => $deprecate?->link,
+            'fallback' => $fallback?->enabled,
         ];
     }
 

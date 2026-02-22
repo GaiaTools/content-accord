@@ -44,11 +44,11 @@ class ApiDeprecateMethodOnlyController
 }
 
 test('#[ApiDeprecate] on class sets Deprecation header', function () {
-    $middleware = new DeprecationHeaders();
+    $middleware = new DeprecationHeaders;
 
     $request = Request::create('/test');
     $route = new Route('GET', '/test', []);
-    $route->setAction(['controller' => ApiDeprecateClassController::class . '@index']);
+    $route->setAction(['controller' => ApiDeprecateClassController::class.'@index']);
     $request->setRouteResolver(fn () => $route);
 
     $response = $middleware->handle($request, fn ($req) => response('OK'));
@@ -59,11 +59,11 @@ test('#[ApiDeprecate] on class sets Deprecation header', function () {
 });
 
 test('#[ApiDeprecate(deprecated: false)] on method suppresses headers from class', function () {
-    $middleware = new DeprecationHeaders();
+    $middleware = new DeprecationHeaders;
 
     $request = Request::create('/test');
     $route = new Route('GET', '/test', []);
-    $route->setAction(['controller' => ApiDeprecateClassController::class . '@show']);
+    $route->setAction(['controller' => ApiDeprecateClassController::class.'@show']);
     $request->setRouteResolver(fn () => $route);
 
     $response = $middleware->handle($request, fn ($req) => response('OK'));
@@ -73,11 +73,11 @@ test('#[ApiDeprecate(deprecated: false)] on method suppresses headers from class
 });
 
 test('#[ApiDeprecate] on method wins over class, sets sunset and link', function () {
-    $middleware = new DeprecationHeaders();
+    $middleware = new DeprecationHeaders;
 
     $request = Request::create('/test');
     $route = new Route('GET', '/test', []);
-    $route->setAction(['controller' => ApiDeprecateMethodWinsController::class . '@index']);
+    $route->setAction(['controller' => ApiDeprecateMethodWinsController::class.'@index']);
     $request->setRouteResolver(fn () => $route);
 
     $response = $middleware->handle($request, fn ($req) => response('OK'));
@@ -89,11 +89,11 @@ test('#[ApiDeprecate] on method wins over class, sets sunset and link', function
 });
 
 test('#[ApiDeprecate] with sunset and link on method-only controller', function () {
-    $middleware = new DeprecationHeaders();
+    $middleware = new DeprecationHeaders;
 
     $request = Request::create('/test');
     $route = new Route('GET', '/test', []);
-    $route->setAction(['controller' => ApiDeprecateMethodOnlyController::class . '@index']);
+    $route->setAction(['controller' => ApiDeprecateMethodOnlyController::class.'@index']);
     $request->setRouteResolver(fn () => $route);
 
     $response = $middleware->handle($request, fn ($req) => response('OK'));
@@ -104,13 +104,13 @@ test('#[ApiDeprecate] with sunset and link on method-only controller', function 
 });
 
 test('#[ApiDeprecate] wins over action array deprecated=false', function () {
-    $middleware = new DeprecationHeaders();
+    $middleware = new DeprecationHeaders;
 
     $request = Request::create('/test');
     $route = new Route('GET', '/test', []);
     // Action says not deprecated, but attribute says deprecated=true
     $route->setAction([
-        'controller' => ApiDeprecateClassController::class . '@index',
+        'controller' => ApiDeprecateClassController::class.'@index',
         'deprecated' => false,
     ]);
     $request->setRouteResolver(fn () => $route);
@@ -122,13 +122,13 @@ test('#[ApiDeprecate] wins over action array deprecated=false', function () {
 });
 
 test('#[ApiDeprecate(deprecated: false)] wins over action array deprecated=true', function () {
-    $middleware = new DeprecationHeaders();
+    $middleware = new DeprecationHeaders;
 
     $request = Request::create('/test');
     $route = new Route('GET', '/test', []);
     // Action says deprecated, but method attribute says not deprecated
     $route->setAction([
-        'controller' => ApiDeprecateClassController::class . '@show',
+        'controller' => ApiDeprecateClassController::class.'@show',
         'deprecated' => true,
     ]);
     $request->setRouteResolver(fn () => $route);

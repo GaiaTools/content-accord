@@ -41,13 +41,12 @@ class ApiNegotiateMethodOverridesClassController
 
 function makeNegotiateDimension(string $key, string $resolvedValue): NegotiationDimension
 {
-    return new class ($key, $resolvedValue) implements NegotiationDimension
+    return new class($key, $resolvedValue) implements NegotiationDimension
     {
         public function __construct(
             private string $dimKey,
             private string $value,
-        ) {
-        }
+        ) {}
 
         public function key(): string
         {
@@ -58,11 +57,9 @@ function makeNegotiateDimension(string $key, string $resolvedValue): Negotiation
         {
             $value = $this->value;
 
-            return new class ($value) implements ContextResolver
+            return new class($value) implements ContextResolver
             {
-                public function __construct(private string $value)
-                {
-                }
+                public function __construct(private string $value) {}
 
                 public function resolve(Request $request): mixed
                 {
@@ -87,14 +84,14 @@ function makeRouteWithController(string $controllerClass, string $method = 'inde
 {
     $route = new Route(['GET'], '/test', []);
     $action = $route->getAction();
-    $action['controller'] = $controllerClass . '@' . $method;
+    $action['controller'] = $controllerClass.'@'.$method;
     $route->setAction($action);
 
     return $route;
 }
 
 test('#[ApiNegotiate(only: [...])] limits negotiation to specified dimensions', function () {
-    $context = new NegotiatedContext();
+    $context = new NegotiatedContext;
     $versionDim = makeNegotiateDimension('version', 'v1');
     $localeDim = makeNegotiateDimension('locale', 'en');
 
@@ -112,7 +109,7 @@ test('#[ApiNegotiate(only: [...])] limits negotiation to specified dimensions', 
 });
 
 test('#[ApiNegotiate(skip: [...])] excludes specified dimensions', function () {
-    $context = new NegotiatedContext();
+    $context = new NegotiatedContext;
     $versionDim = makeNegotiateDimension('version', 'v1');
     $localeDim = makeNegotiateDimension('locale', 'en');
 
@@ -130,7 +127,7 @@ test('#[ApiNegotiate(skip: [...])] excludes specified dimensions', function () {
 });
 
 test('#[ApiNegotiate] on method overrides class attribute', function () {
-    $context = new NegotiatedContext();
+    $context = new NegotiatedContext;
     $versionDim = makeNegotiateDimension('version', 'v1');
     $localeDim = makeNegotiateDimension('locale', 'en');
 
@@ -150,7 +147,7 @@ test('#[ApiNegotiate] on method overrides class attribute', function () {
 });
 
 test('#[ApiNegotiate] attribute wins over route default', function () {
-    $context = new NegotiatedContext();
+    $context = new NegotiatedContext;
     $versionDim = makeNegotiateDimension('version', 'v1');
     $localeDim = makeNegotiateDimension('locale', 'en');
 
@@ -170,7 +167,7 @@ test('#[ApiNegotiate] attribute wins over route default', function () {
 });
 
 test('#[ApiNegotiate] class-level attribute applies when method has no attribute', function () {
-    $context = new NegotiatedContext();
+    $context = new NegotiatedContext;
     $versionDim = makeNegotiateDimension('version', 'v1');
     $localeDim = makeNegotiateDimension('locale', 'en');
 

@@ -11,8 +11,7 @@ final readonly class HeaderVersionResolver implements VersionResolver
 {
     public function __construct(
         private string $headerName = 'Api-Version',
-    ) {
-    }
+    ) {}
 
     public function resolve(Request $request): ?ApiVersion
     {

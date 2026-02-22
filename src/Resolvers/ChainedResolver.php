@@ -12,8 +12,7 @@ final readonly class ChainedResolver implements ContextResolver
      */
     public function __construct(
         private array $resolvers,
-    ) {
-    }
+    ) {}
 
     public function resolve(Request $request): mixed
     {

@@ -85,25 +85,25 @@ final class RouteVersionBuilder
 
     private function buildVersionMiddleware(): string
     {
-        $parts = ['version=' . $this->version];
+        $parts = ['version='.$this->version];
 
         if ($this->deprecated !== null) {
-            $parts[] = 'deprecated=' . ($this->deprecated ? 'true' : 'false');
+            $parts[] = 'deprecated='.($this->deprecated ? 'true' : 'false');
         }
 
         if ($this->sunsetDate !== null) {
-            $parts[] = 'sunset=' . $this->sunsetDate;
+            $parts[] = 'sunset='.$this->sunsetDate;
         }
 
         if ($this->deprecationLink !== null) {
-            $parts[] = 'link=' . $this->deprecationLink;
+            $parts[] = 'link='.$this->deprecationLink;
         }
 
         if ($this->fallback !== null) {
-            $parts[] = 'fallback=' . ($this->fallback ? 'true' : 'false');
+            $parts[] = 'fallback='.($this->fallback ? 'true' : 'false');
         }
 
-        return ApiVersionMetadata::class . ':' . implode(',', $parts);
+        return ApiVersionMetadata::class.':'.implode(',', $parts);
     }
 
     private function resolvePrefix(): string
@@ -112,10 +112,10 @@ final class RouteVersionBuilder
             $uriConfig = config('content-accord.versioning.strategies.uri', []);
             $versionPrefix = $uriConfig['prefix'] ?? 'v';
             $prefixPart = $this->prefix !== null && $this->prefix !== ''
-                ? rtrim($this->prefix, '/') . '/'
+                ? rtrim($this->prefix, '/').'/'
                 : '';
 
-            return $prefixPart . $versionPrefix . $this->version;
+            return $prefixPart.$versionPrefix.$this->version;
         }
 
         return $this->prefix ?? '';

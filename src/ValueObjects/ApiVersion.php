@@ -10,8 +10,7 @@ final readonly class ApiVersion implements Stringable
     public function __construct(
         public int $major,
         public int $minor = 0,
-    ) {
-    }
+    ) {}
 
     /**
      * Parse version from various formats: "1", "1.2", "v1", "v1.2"

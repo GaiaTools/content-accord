@@ -5,7 +5,7 @@ use Illuminate\Http\Request;
 use Illuminate\Routing\Route;
 
 test('adds deprecation header when route is deprecated', function () {
-    $middleware = new DeprecationHeaders();
+    $middleware = new DeprecationHeaders;
 
     $request = Request::create('/test');
     $route = new Route('GET', '/test', []);
@@ -22,7 +22,7 @@ test('adds deprecation header when route is deprecated', function () {
 });
 
 test('does not add deprecation header when route is not deprecated', function () {
-    $middleware = new DeprecationHeaders();
+    $middleware = new DeprecationHeaders;
 
     $request = Request::create('/test');
     $route = new Route('GET', '/test', []);
@@ -37,7 +37,7 @@ test('does not add deprecation header when route is not deprecated', function ()
 });
 
 test('adds sunset header when sunset date is provided', function () {
-    $middleware = new DeprecationHeaders();
+    $middleware = new DeprecationHeaders;
 
     $request = Request::create('/test');
     $route = new Route('GET', '/test', []);
@@ -59,7 +59,7 @@ test('adds sunset header when sunset date is provided', function () {
 });
 
 test('adds link header when deprecation link is provided', function () {
-    $middleware = new DeprecationHeaders();
+    $middleware = new DeprecationHeaders;
 
     $request = Request::create('/test');
     $route = new Route('GET', '/test', []);
@@ -80,7 +80,7 @@ test('adds link header when deprecation link is provided', function () {
 });
 
 test('adds all deprecation headers when all metadata is provided', function () {
-    $middleware = new DeprecationHeaders();
+    $middleware = new DeprecationHeaders;
 
     $request = Request::create('/test');
     $route = new Route('GET', '/test', []);
@@ -102,7 +102,7 @@ test('adds all deprecation headers when all metadata is provided', function () {
 });
 
 test('does not modify response when route has no deprecation metadata', function () {
-    $middleware = new DeprecationHeaders();
+    $middleware = new DeprecationHeaders;
 
     $request = Request::create('/test');
     $route = new Route('GET', '/test', []);
@@ -120,7 +120,7 @@ test('does not modify response when route has no deprecation metadata', function
 });
 
 test('handles request without route', function () {
-    $middleware = new DeprecationHeaders();
+    $middleware = new DeprecationHeaders;
 
     $request = Request::create('/test');
 
@@ -133,7 +133,7 @@ test('handles request without route', function () {
 });
 
 test('deprecated false does not add headers', function () {
-    $middleware = new DeprecationHeaders();
+    $middleware = new DeprecationHeaders;
 
     $request = Request::create('/test');
     $route = new Route('GET', '/test', []);
@@ -153,7 +153,7 @@ test('deprecated false does not add headers', function () {
 });
 
 test('passes request to next handler', function () {
-    $middleware = new DeprecationHeaders();
+    $middleware = new DeprecationHeaders;
     $passedRequest = null;
 
     $request = Request::create('/test');

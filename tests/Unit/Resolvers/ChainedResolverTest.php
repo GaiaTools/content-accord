@@ -78,9 +78,7 @@ test('stops at first successful resolver', function () {
 
     $resolver2 = new class($callCount) implements ContextResolver
     {
-        public function __construct(private int &$callCount)
-        {
-        }
+        public function __construct(private int &$callCount) {}
 
         public function resolve(Request $request): mixed
         {
@@ -119,9 +117,7 @@ test('passes request to each resolver', function () {
 
     $resolver = new class($receivedRequest) implements ContextResolver
     {
-        public function __construct(private ?Request &$receivedRequest)
-        {
-        }
+        public function __construct(private ?Request &$receivedRequest) {}
 
         public function resolve(Request $request): mixed
         {

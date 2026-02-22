@@ -12,8 +12,7 @@ final readonly class VersionResolverFactory
     public function __construct(
         private Container $container,
         private array $config,
-    ) {
-    }
+    ) {}
 
     public function build(): ContextResolver
     {

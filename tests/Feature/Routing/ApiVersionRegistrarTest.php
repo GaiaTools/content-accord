@@ -99,7 +99,7 @@ test('version middleware string is applied to routes', function () {
     $middleware = is_array($middleware) ? $middleware : [$middleware];
 
     $versionMiddleware = collect($middleware)->first(
-        fn ($m) => is_string($m) && str_starts_with($m, ApiVersionMetadata::class . ':')
+        fn ($m) => is_string($m) && str_starts_with($m, ApiVersionMetadata::class.':')
     );
 
     expect($versionMiddleware)->not->toBeNull()
@@ -127,7 +127,7 @@ test('deprecated sunsetDate and deprecationLink are encoded in the middleware st
     $middleware = is_array($middleware) ? $middleware : [$middleware];
 
     $versionMiddleware = collect($middleware)->first(
-        fn ($m) => is_string($m) && str_starts_with($m, ApiVersionMetadata::class . ':')
+        fn ($m) => is_string($m) && str_starts_with($m, ApiVersionMetadata::class.':')
     );
 
     expect($versionMiddleware)->not->toBeNull()
@@ -154,7 +154,7 @@ test('fallback is encoded in the middleware string', function () {
     $middleware = is_array($middleware) ? $middleware : [$middleware];
 
     $versionMiddleware = collect($middleware)->first(
-        fn ($m) => is_string($m) && str_starts_with($m, ApiVersionMetadata::class . ':')
+        fn ($m) => is_string($m) && str_starts_with($m, ApiVersionMetadata::class.':')
     );
 
     expect($versionMiddleware)->not->toBeNull()
@@ -179,7 +179,7 @@ test('extra middleware is applied alongside version middleware', function () {
     $middleware = is_array($middleware) ? $middleware : [$middleware];
 
     $hasVersionMiddleware = collect($middleware)->contains(
-        fn ($m) => is_string($m) && str_starts_with($m, ApiVersionMetadata::class . ':')
+        fn ($m) => is_string($m) && str_starts_with($m, ApiVersionMetadata::class.':')
     );
 
     expect($hasVersionMiddleware)->toBeTrue()

@@ -4,7 +4,7 @@ use GaiaTools\ContentAccord\Http\NegotiatedContext;
 use GaiaTools\ContentAccord\ValueObjects\ApiVersion;
 
 test('can set and get values', function () {
-    $context = new NegotiatedContext();
+    $context = new NegotiatedContext;
     $version = new ApiVersion(2, 1);
 
     $context->set('version', $version);
@@ -13,13 +13,13 @@ test('can set and get values', function () {
 });
 
 test('returns null for non-existent key', function () {
-    $context = new NegotiatedContext();
+    $context = new NegotiatedContext;
 
     expect($context->get('nonexistent'))->toBeNull();
 });
 
 test('can check if key exists', function () {
-    $context = new NegotiatedContext();
+    $context = new NegotiatedContext;
 
     $context->set('version', new ApiVersion(1));
 
@@ -28,7 +28,7 @@ test('can check if key exists', function () {
 });
 
 test('can get all resolved values', function () {
-    $context = new NegotiatedContext();
+    $context = new NegotiatedContext;
     $version = new ApiVersion(2, 1);
 
     $context->set('version', $version);
@@ -45,7 +45,7 @@ test('can get all resolved values', function () {
 });
 
 test('can overwrite existing values', function () {
-    $context = new NegotiatedContext();
+    $context = new NegotiatedContext;
 
     $context->set('version', new ApiVersion(1));
     $context->set('version', new ApiVersion(2));
@@ -54,7 +54,7 @@ test('can overwrite existing values', function () {
 });
 
 test('has returns true for null values', function () {
-    $context = new NegotiatedContext();
+    $context = new NegotiatedContext;
 
     $context->set('nullable', null);
 
@@ -63,7 +63,7 @@ test('has returns true for null values', function () {
 });
 
 test('starts with empty resolved array', function () {
-    $context = new NegotiatedContext();
+    $context = new NegotiatedContext;
 
     expect($context->all())->toBeEmpty();
 });

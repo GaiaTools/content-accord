@@ -8,7 +8,6 @@ use GaiaTools\ContentAccord\Exceptions\MissingVersionException;
 use GaiaTools\ContentAccord\Exceptions\UnsupportedVersionException;
 use GaiaTools\ContentAccord\Resolvers\Version\VersionResolverFactory;
 use GaiaTools\ContentAccord\ValueObjects\ApiVersion;
-use GaiaTools\ContentAccord\Routing\RouteVersionMetadata;
 use Illuminate\Container\Container;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Route;
@@ -21,8 +20,7 @@ class VersionedRouteCollection extends RouteCollection
     public function __construct(
         private array $config,
         private Container $container,
-    ) {
-    }
+    ) {}
 
     public static function fromExisting(RouteCollection $routes, array $config, Container $container): self
     {
@@ -38,14 +36,14 @@ class VersionedRouteCollection extends RouteCollection
     protected function addToCollections($route)
     {
         $methods = $route->methods();
-        $domainAndUri = $route->getDomain() . $route->uri();
+        $domainAndUri = $route->getDomain().$route->uri();
         $versionKey = $this->versionKey($route);
 
         foreach ($methods as $method) {
-            $this->routes[$method][$domainAndUri . $versionKey] = $route;
+            $this->routes[$method][$domainAndUri.$versionKey] = $route;
         }
 
-        $this->allRoutes[implode('|', $methods) . $domainAndUri . $versionKey] = $route;
+        $this->allRoutes[implode('|', $methods).$domainAndUri.$versionKey] = $route;
     }
 
     protected function matchAgainstRoutes(array $routes, $request, $includingMethod = true)
@@ -197,7 +195,7 @@ class VersionedRouteCollection extends RouteCollection
         $supported = $this->supportedVersions();
 
         return match ($strategy) {
-            MissingVersionStrategy::Reject => throw new MissingVersionException(),
+            MissingVersionStrategy::Reject => throw new MissingVersionException,
             MissingVersionStrategy::DefaultVersion => $this->defaultVersion()
                 ?? throw new MissingVersionException('No default version configured'),
             MissingVersionStrategy::LatestVersion => $this->latestVersion($supported),

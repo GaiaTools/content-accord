@@ -14,8 +14,7 @@ class ApiVersionRequestBuilder
     public function __construct(
         private object $testCase,
         private string $version,
-    ) {
-    }
+    ) {}
 
     public function get(string $uri, array $headers = []): TestResponse
     {
@@ -124,7 +123,7 @@ class ApiVersionRequestBuilder
             $normalizedRouteUri = $this->stripVersionSegment($routeUri, $prefix, $parsed->major);
 
             if ($normalizedRouteUri === $normalizedUri) {
-                return '/' . $routeUri;
+                return '/'.$routeUri;
             }
         }
 
@@ -134,7 +133,7 @@ class ApiVersionRequestBuilder
     private function stripVersionSegment(string $uri, string $prefix, int $major): string
     {
         $segments = array_values(array_filter(explode('/', trim($uri, '/')), static fn ($segment) => $segment !== ''));
-        $needle = $prefix . $major;
+        $needle = $prefix.$major;
 
         foreach ($segments as $index => $segment) {
             if ($segment === $needle) {
@@ -148,12 +147,12 @@ class ApiVersionRequestBuilder
 
     private function injectVersionSegment(string $uri, string $prefix): string
     {
-        $versionSegment = $prefix . $this->version;
+        $versionSegment = $prefix.$this->version;
 
         if ($uri === '') {
-            return '/' . $versionSegment;
+            return '/'.$versionSegment;
         }
 
-        return '/' . $versionSegment . '/' . $uri;
+        return '/'.$versionSegment.'/'.$uri;
     }
 }

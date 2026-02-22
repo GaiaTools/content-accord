@@ -15,7 +15,7 @@ use Illuminate\Http\Request;
 use Illuminate\Routing\Route;
 
 test('populates negotiated context with resolved dimension values', function () {
-    $context = new NegotiatedContext();
+    $context = new NegotiatedContext;
     $resolver = new HeaderVersionResolver('Api-Version');
     $dimension = new VersioningDimension(
         resolver: $resolver,
@@ -37,7 +37,7 @@ test('populates negotiated context with resolved dimension values', function () 
 });
 
 test('uses fallback when resolver returns null', function () {
-    $context = new NegotiatedContext();
+    $context = new NegotiatedContext;
     $resolver = new HeaderVersionResolver('Api-Version');
     $defaultVersion = new ApiVersion(1);
 
@@ -60,7 +60,7 @@ test('uses fallback when resolver returns null', function () {
 });
 
 test('validates resolved value', function () {
-    $context = new NegotiatedContext();
+    $context = new NegotiatedContext;
     $resolver = new HeaderVersionResolver('Api-Version');
 
     $dimension = new VersioningDimension(
@@ -79,7 +79,7 @@ test('validates resolved value', function () {
 })->throws(UnsupportedVersionException::class);
 
 test('throws exception when fallback fails', function () {
-    $context = new NegotiatedContext();
+    $context = new NegotiatedContext;
     $resolver = new HeaderVersionResolver('Api-Version');
 
     $dimension = new VersioningDimension(
@@ -98,7 +98,7 @@ test('throws exception when fallback fails', function () {
 })->throws(MissingVersionException::class);
 
 test('processes multiple dimensions', function () {
-    $context = new NegotiatedContext();
+    $context = new NegotiatedContext;
 
     // Version dimension
     $versionResolver = new HeaderVersionResolver('Api-Version');
@@ -154,7 +154,7 @@ test('processes multiple dimensions', function () {
 });
 
 test('processes dimensions with no dimensions array', function () {
-    $context = new NegotiatedContext();
+    $context = new NegotiatedContext;
     $middleware = new NegotiateContext([], $context);
 
     $request = Request::create('/test');
@@ -165,7 +165,7 @@ test('processes dimensions with no dimensions array', function () {
 });
 
 test('calls next closure and returns response', function () {
-    $context = new NegotiatedContext();
+    $context = new NegotiatedContext;
     $resolver = new HeaderVersionResolver('Api-Version');
     $dimension = new VersioningDimension(
         resolver: $resolver,
@@ -186,7 +186,7 @@ test('calls next closure and returns response', function () {
 });
 
 test('skips dimensions configured on the route', function () {
-    $context = new NegotiatedContext();
+    $context = new NegotiatedContext;
 
     $versionDimension = new class implements NegotiationDimension
     {
@@ -255,7 +255,7 @@ test('skips dimensions configured on the route', function () {
 });
 
 test('only processes dimensions configured on the route', function () {
-    $context = new NegotiatedContext();
+    $context = new NegotiatedContext;
 
     $versionDimension = new class implements NegotiationDimension
     {
@@ -333,7 +333,7 @@ class NegotiateContextAttributeTestController
 }
 
 test('#[ApiNegotiate] attribute filters dimensions via controller reflection', function () {
-    $context = new NegotiatedContext();
+    $context = new NegotiatedContext;
 
     $versionDimension = new class implements NegotiationDimension
     {
@@ -392,7 +392,7 @@ test('#[ApiNegotiate] attribute filters dimensions via controller reflection', f
     $request = Request::create('/test');
     $route = new Route(['GET'], '/test', []);
     $action = $route->getAction();
-    $action['controller'] = NegotiateContextAttributeTestController::class . '@index';
+    $action['controller'] = NegotiateContextAttributeTestController::class.'@index';
     $route->setAction($action);
     $request->setRouteResolver(fn () => $route);
 

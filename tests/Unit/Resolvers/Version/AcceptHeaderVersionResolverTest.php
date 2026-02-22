@@ -3,7 +3,7 @@
 use GaiaTools\ContentAccord\Resolvers\Version\AcceptHeaderVersionResolver;
 use GaiaTools\ContentAccord\ValueObjects\ApiVersion;
 use Illuminate\Http\Request;
-use Mockery as Mockery;
+use Mockery;
 
 afterEach(function () {
     Mockery::close();

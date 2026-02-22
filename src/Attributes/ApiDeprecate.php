@@ -8,9 +8,8 @@ use Attribute;
 final readonly class ApiDeprecate
 {
     public function __construct(
-        public bool    $deprecated = true,
-        public ?string $sunset     = null,
-        public ?string $link       = null,
-    ) {
-    }
+        public bool $deprecated = true,
+        public ?string $sunset = null,
+        public ?string $link = null,
+    ) {}
 }

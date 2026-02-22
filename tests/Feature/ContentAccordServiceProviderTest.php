@@ -4,11 +4,11 @@ use GaiaTools\ContentAccord\ContentAccordServiceProvider;
 use GaiaTools\ContentAccord\Contracts\ContextResolver;
 use GaiaTools\ContentAccord\Contracts\NegotiationDimension;
 use GaiaTools\ContentAccord\Dimensions\VersioningDimension;
+use GaiaTools\ContentAccord\Http\Middleware\NegotiateContext;
 use GaiaTools\ContentAccord\Resolvers\ChainedResolver;
 use GaiaTools\ContentAccord\Resolvers\Version\HeaderVersionResolver;
 use GaiaTools\ContentAccord\Resolvers\Version\UriVersionResolver;
 use GaiaTools\ContentAccord\Routing\VersionedRouteCollection;
-use GaiaTools\ContentAccord\Http\Middleware\NegotiateContext;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Router;
 
@@ -148,7 +148,7 @@ class CustomTestDimension implements NegotiationDimension
 
     public function resolver(): ContextResolver
     {
-        return new CustomTestResolver();
+        return new CustomTestResolver;
     }
 
     public function validate(mixed $resolved, Request $request): bool

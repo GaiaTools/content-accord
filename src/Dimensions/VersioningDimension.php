@@ -13,9 +13,6 @@ use Illuminate\Http\Request;
 final readonly class VersioningDimension implements NegotiationDimension
 {
     /**
-     * @param  ContextResolver  $resolver
-     * @param  MissingVersionStrategy  $missingStrategy
-     * @param  ApiVersion|null  $defaultVersion
      * @param  array<int>  $supportedVersions
      */
     public function __construct(
@@ -23,8 +20,7 @@ final readonly class VersioningDimension implements NegotiationDimension
         private MissingVersionStrategy $missingStrategy,
         private ?ApiVersion $defaultVersion,
         private array $supportedVersions,
-    ) {
-    }
+    ) {}
 
     public function key(): string
     {
@@ -58,7 +54,7 @@ final readonly class VersioningDimension implements NegotiationDimension
     public function fallback(Request $request): mixed
     {
         return match ($this->missingStrategy) {
-            MissingVersionStrategy::Reject => throw new MissingVersionException(),
+            MissingVersionStrategy::Reject => throw new MissingVersionException,
             MissingVersionStrategy::DefaultVersion => $this->defaultVersion
                 ?? throw new MissingVersionException('No default version configured'),
             MissingVersionStrategy::LatestVersion => $this->resolveLatestVersion(),

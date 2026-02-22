@@ -2,10 +2,10 @@
 
 namespace GaiaTools\ContentAccord\Http\Middleware;
 
+use Closure;
 use GaiaTools\ContentAccord\Attributes\ApiNegotiate;
 use GaiaTools\ContentAccord\Contracts\NegotiationDimension;
 use GaiaTools\ContentAccord\Http\NegotiatedContext;
-use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Route;
 use ReflectionClass;
@@ -18,8 +18,7 @@ final readonly class NegotiateContext
     public function __construct(
         private array $dimensions,
         private NegotiatedContext $context,
-    ) {
-    }
+    ) {}
 
     public function handle(Request $request, Closure $next): mixed
     {
