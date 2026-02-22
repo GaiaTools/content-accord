@@ -1,0 +1,29 @@
+{
+  "name": "gaiatools/content-accord",
+  "description": "Laravel package for API versioning with composable strategies and generic negotiation dimensions",
+  "repository": "https://github.com/GaiaTools/content-accord",
+  "tags": [
+    "content negotiation",
+    "api versioning",
+    "laravel",
+    "content-accord",
+    "api"
+  ],
+  "nav": [
+    {"text": "Overview", "link": "index"},
+    {"text": "Architecture", "link": "architecture"},
+    {"text": "Middleware", "link": "middleware"},
+    {"text": "Resolution", "link": "resolution"},
+    {"text": "Usage", "link": "usage"}
+  ],
+  "sidebar": [
+    {"text": "Overview", "link": "index"},
+    {"text": "Architecture", "link": "architecture"},
+    {"text": "Middleware", "link": "middleware"},
+    {"text": "Resolution", "link": "resolution"},
+    {"text": "Usage", "link": "usage"}
+  ],
+  "head": {
+    "title": "Content Accord"
+  }
+}
