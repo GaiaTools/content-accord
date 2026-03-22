@@ -124,6 +124,26 @@ return [
 
         /*
         |----------------------------------------------------------------------
+        | Version Aliases
+        |----------------------------------------------------------------------
+        |
+        | Map symbolic names to concrete version numbers. Resolvers that
+        | support aliases (URI, header, query string) will recognise these
+        | names and resolve them to the configured version before negotiation.
+        |
+        | Example:
+        |   'aliases' => ['latest' => '3', 'stable' => '2'],
+        |
+        | Clients may then request `Api-Version: latest` instead of
+        | `Api-Version: 3`, or append `?version=stable` to a URL.
+        |
+        */
+        'aliases' => [
+            // 'latest' => '1',
+        ],
+
+        /*
+        |----------------------------------------------------------------------
         | Registered Versions
         |----------------------------------------------------------------------
         |
