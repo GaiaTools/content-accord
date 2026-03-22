@@ -2,6 +2,8 @@
 
 use GaiaTools\ContentAccord\Http\Middleware\ApiVersionMetadata;
 use GaiaTools\ContentAccord\Http\NegotiatedContext;
+use GaiaTools\ContentAccord\Resolvers\Version\AcceptHeaderVersionResolver;
+use GaiaTools\ContentAccord\Resolvers\Version\HeaderVersionResolver;
 use GaiaTools\ContentAccord\Resolvers\Version\UriVersionResolver;
 use GaiaTools\ContentAccord\Routing\RouteVersionBuilder;
 use GaiaTools\ContentAccord\ValueObjects\ApiVersion;
@@ -53,7 +55,7 @@ test('URI strategy with no prefix produces version-only prefix', function () {
 
 test('header resolver does not add version prefix', function () {
     config([
-        'content-accord.versioning.resolver' => [\GaiaTools\ContentAccord\Resolvers\Version\HeaderVersionResolver::class],
+        'content-accord.versioning.resolver' => [HeaderVersionResolver::class],
     ]);
 
     Route::apiVersion('2')->prefix('api')->group(function () {
@@ -69,7 +71,7 @@ test('header resolver does not add version prefix', function () {
 
 test('accept resolver does not add version prefix', function () {
     config([
-        'content-accord.versioning.resolver' => [\GaiaTools\ContentAccord\Resolvers\Version\AcceptHeaderVersionResolver::class],
+        'content-accord.versioning.resolver' => [AcceptHeaderVersionResolver::class],
     ]);
 
     Route::apiVersion('2')->prefix('api')->group(function () {
@@ -108,7 +110,7 @@ test('version middleware string is applied to routes', function () {
 
 test('deprecated sunsetDate and deprecationLink are encoded in the middleware string', function () {
     config([
-        'content-accord.versioning.resolver' => [\GaiaTools\ContentAccord\Resolvers\Version\HeaderVersionResolver::class],
+        'content-accord.versioning.resolver' => [HeaderVersionResolver::class],
     ]);
 
     Route::apiVersion('1')
@@ -138,7 +140,7 @@ test('deprecated sunsetDate and deprecationLink are encoded in the middleware st
 
 test('fallback is encoded in the middleware string', function () {
     config([
-        'content-accord.versioning.resolver' => [\GaiaTools\ContentAccord\Resolvers\Version\HeaderVersionResolver::class],
+        'content-accord.versioning.resolver' => [HeaderVersionResolver::class],
     ]);
 
     Route::apiVersion('2')
@@ -163,7 +165,7 @@ test('fallback is encoded in the middleware string', function () {
 
 test('extra middleware is applied alongside version middleware', function () {
     config([
-        'content-accord.versioning.resolver' => [\GaiaTools\ContentAccord\Resolvers\Version\HeaderVersionResolver::class],
+        'content-accord.versioning.resolver' => [HeaderVersionResolver::class],
     ]);
 
     Route::apiVersion('1')

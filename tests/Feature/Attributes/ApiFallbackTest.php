@@ -2,7 +2,9 @@
 
 use GaiaTools\ContentAccord\Attributes\ApiFallback;
 use GaiaTools\ContentAccord\Attributes\ApiVersion as ApiVersionAttribute;
+use GaiaTools\ContentAccord\Resolvers\Version\HeaderVersionResolver;
 use GaiaTools\ContentAccord\Routing\VersionedRouteCollection;
+use Illuminate\Http\Request;
 use Illuminate\Routing\Route;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
@@ -47,7 +49,7 @@ function makeFallbackConfig(): array
         'default_version' => '1',
         'fallback' => false,
         'versions' => ['1' => [], '2' => [], '3' => []],
-        'resolver' => [\GaiaTools\ContentAccord\Resolvers\Version\HeaderVersionResolver::class],
+        'resolver' => [HeaderVersionResolver::class],
         'strategies' => [
             'header' => ['name' => 'Api-Version'],
             'uri' => ['prefix' => 'v', 'parameter' => 'version'],
@@ -84,7 +86,7 @@ test('#[ApiFallback(false)] disables fallback when requesting higher version', f
     $collection->add(makeSimpleVersionedRoute('1'));
     $collection->add(makeControllerRoute(ApiFallbackDisabledController::class));
 
-    $request = \Illuminate\Http\Request::create('/users', 'GET');
+    $request = Request::create('/users', 'GET');
     $request->headers->set('Api-Version', '3');
 
     expect(fn () => $collection->match($request))->toThrow(NotFoundHttpException::class);
@@ -95,7 +97,7 @@ test('#[ApiFallback] (enabled=true) allows fallback when requesting higher versi
     $collection->add(makeSimpleVersionedRoute('1'));
     $collection->add(makeControllerRoute(ApiFallbackEnabledController::class));
 
-    $request = \Illuminate\Http\Request::create('/users', 'GET');
+    $request = Request::create('/users', 'GET');
     $request->headers->set('Api-Version', '3');
 
     $matched = $collection->match($request);
@@ -108,7 +110,7 @@ test('#[ApiFallback] on method overrides #[ApiFallback(false)] on class', functi
     $collection->add(makeSimpleVersionedRoute('1'));
     $collection->add(makeControllerRoute(ApiFallbackMethodOverridesClassController::class));
 
-    $request = \Illuminate\Http\Request::create('/users', 'GET');
+    $request = Request::create('/users', 'GET');
     $request->headers->set('Api-Version', '3');
 
     $matched = $collection->match($request);
@@ -125,7 +127,7 @@ test('#[ApiFallback(false)] wins over global config fallback=true', function () 
     $collection->add(makeSimpleVersionedRoute('1'));
     $collection->add(makeControllerRoute(ApiFallbackDisabledController::class));
 
-    $request = \Illuminate\Http\Request::create('/users', 'GET');
+    $request = Request::create('/users', 'GET');
     $request->headers->set('Api-Version', '3');
 
     // Attribute (false) wins over global config (true)

@@ -4,6 +4,7 @@ use GaiaTools\ContentAccord\Attributes\ApiFallback as ApiFallbackAttr;
 use GaiaTools\ContentAccord\Attributes\ApiVersion as ApiVersionAttr;
 use GaiaTools\ContentAccord\Exceptions\MissingVersionException;
 use GaiaTools\ContentAccord\Exceptions\UnsupportedVersionException;
+use GaiaTools\ContentAccord\Resolvers\Version\HeaderVersionResolver;
 use GaiaTools\ContentAccord\Routing\VersionedRouteCollection;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Route;
@@ -47,7 +48,7 @@ test('matches route by header version', function () {
         'default_version' => '1',
         'fallback' => false,
         'versions' => ['1' => [], '2' => []],
-        'resolver' => [\GaiaTools\ContentAccord\Resolvers\Version\HeaderVersionResolver::class],
+        'resolver' => [HeaderVersionResolver::class],
         'strategies' => [
             'header' => ['name' => 'Api-Version'],
             'uri' => ['prefix' => 'v', 'parameter' => 'version'],
@@ -73,7 +74,7 @@ test('matches route by version metadata middleware', function () {
         'default_version' => '1',
         'fallback' => false,
         'versions' => ['1' => [], '2' => []],
-        'resolver' => [\GaiaTools\ContentAccord\Resolvers\Version\HeaderVersionResolver::class],
+        'resolver' => [HeaderVersionResolver::class],
         'strategies' => [
             'header' => ['name' => 'Api-Version'],
             'uri' => ['prefix' => 'v', 'parameter' => 'version'],
@@ -108,7 +109,7 @@ test('falls back to closest lower version when enabled', function () {
         'default_version' => '1',
         'fallback' => false,
         'versions' => ['1' => [], '2' => [], '3' => []],
-        'resolver' => [\GaiaTools\ContentAccord\Resolvers\Version\HeaderVersionResolver::class],
+        'resolver' => [HeaderVersionResolver::class],
         'strategies' => [
             'header' => ['name' => 'Api-Version'],
             'uri' => ['prefix' => 'v', 'parameter' => 'version'],
@@ -134,7 +135,7 @@ test('returns not found when fallback disabled and no version match', function (
         'default_version' => '1',
         'fallback' => false,
         'versions' => ['1' => [], '2' => [], '3' => []],
-        'resolver' => [\GaiaTools\ContentAccord\Resolvers\Version\HeaderVersionResolver::class],
+        'resolver' => [HeaderVersionResolver::class],
         'strategies' => [
             'header' => ['name' => 'Api-Version'],
             'uri' => ['prefix' => 'v', 'parameter' => 'version'],
@@ -160,7 +161,7 @@ test('uses default version when missing strategy is default', function () {
         'default_version' => '2',
         'fallback' => false,
         'versions' => ['1' => [], '2' => []],
-        'resolver' => [\GaiaTools\ContentAccord\Resolvers\Version\HeaderVersionResolver::class],
+        'resolver' => [HeaderVersionResolver::class],
         'strategies' => [
             'header' => ['name' => 'Api-Version'],
             'uri' => ['prefix' => 'v', 'parameter' => 'version'],
@@ -185,7 +186,7 @@ test('throws when version is missing and strategy is reject', function () {
         'default_version' => '1',
         'fallback' => false,
         'versions' => ['1' => []],
-        'resolver' => [\GaiaTools\ContentAccord\Resolvers\Version\HeaderVersionResolver::class],
+        'resolver' => [HeaderVersionResolver::class],
         'strategies' => [
             'header' => ['name' => 'Api-Version'],
             'uri' => ['prefix' => 'v', 'parameter' => 'version'],
@@ -209,7 +210,7 @@ test('throws when requested version is unsupported', function () {
         'default_version' => '1',
         'fallback' => false,
         'versions' => ['1' => [], '2' => []],
-        'resolver' => [\GaiaTools\ContentAccord\Resolvers\Version\HeaderVersionResolver::class],
+        'resolver' => [HeaderVersionResolver::class],
         'strategies' => [
             'header' => ['name' => 'Api-Version'],
             'uri' => ['prefix' => 'v', 'parameter' => 'version'],
@@ -235,7 +236,7 @@ test('#[ApiFallback(false)] attribute disables fallback in collection', function
         'default_version' => '1',
         'fallback' => false,
         'versions' => ['1' => [], '2' => [], '3' => []],
-        'resolver' => [\GaiaTools\ContentAccord\Resolvers\Version\HeaderVersionResolver::class],
+        'resolver' => [HeaderVersionResolver::class],
         'strategies' => [
             'header' => ['name' => 'Api-Version'],
             'uri' => ['prefix' => 'v', 'parameter' => 'version'],
@@ -265,7 +266,7 @@ test('#[ApiFallback] attribute enables fallback in collection', function () {
         'default_version' => '1',
         'fallback' => false,
         'versions' => ['1' => [], '2' => [], '3' => []],
-        'resolver' => [\GaiaTools\ContentAccord\Resolvers\Version\HeaderVersionResolver::class],
+        'resolver' => [HeaderVersionResolver::class],
         'strategies' => [
             'header' => ['name' => 'Api-Version'],
             'uri' => ['prefix' => 'v', 'parameter' => 'version'],

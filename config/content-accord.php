@@ -1,5 +1,8 @@
 <?php
 
+use GaiaTools\ContentAccord\Dimensions\VersioningDimension;
+use GaiaTools\ContentAccord\Resolvers\Version\UriVersionResolver;
+
 return [
     /*
     |--------------------------------------------------------------------------
@@ -12,7 +15,7 @@ return [
     |
     */
     'dimensions' => [
-        GaiaTools\ContentAccord\Dimensions\VersioningDimension::class,
+        VersioningDimension::class,
     ],
 
     /*
@@ -40,7 +43,7 @@ return [
         |
         */
         'resolver' => [
-            GaiaTools\ContentAccord\Resolvers\Version\UriVersionResolver::class,
+            UriVersionResolver::class,
             // GaiaTools\ContentAccord\Resolvers\Version\HeaderVersionResolver::class,
             // GaiaTools\ContentAccord\Resolvers\Version\AcceptHeaderVersionResolver::class,
         ],

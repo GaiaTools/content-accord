@@ -12,6 +12,7 @@ use GaiaTools\ContentAccord\Http\Middleware\NegotiateContext;
 use GaiaTools\ContentAccord\Http\NegotiatedContext;
 use GaiaTools\ContentAccord\Resolvers\Version\VersionResolverFactory;
 use GaiaTools\ContentAccord\Routing\ApiVersionRegistrar;
+use GaiaTools\ContentAccord\Routing\VersionedRouteCollection;
 use GaiaTools\ContentAccord\ValueObjects\ApiVersion;
 use Illuminate\Container\Container;
 use Illuminate\Routing\RouteCollection;
@@ -87,7 +88,7 @@ class ContentAccordServiceProvider extends ServiceProvider
         $config = config()->array('content-accord.versioning');
         $routes = $router->getRoutes();
 
-        if ($routes instanceof \GaiaTools\ContentAccord\Routing\VersionedRouteCollection) {
+        if ($routes instanceof VersionedRouteCollection) {
             return;
         }
 
@@ -99,7 +100,7 @@ class ContentAccordServiceProvider extends ServiceProvider
         $container = $this->app;
 
         $router->setRoutes(
-            \GaiaTools\ContentAccord\Routing\VersionedRouteCollection::fromExisting(
+            VersionedRouteCollection::fromExisting(
                 $routes,
                 $config,
                 $container
