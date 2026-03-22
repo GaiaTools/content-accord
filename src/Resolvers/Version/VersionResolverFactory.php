@@ -52,6 +52,7 @@ final readonly class VersionResolverFactory
         $uri = is_array($strategies['uri'] ?? null) ? $strategies['uri'] : [];
         $header = is_array($strategies['header'] ?? null) ? $strategies['header'] : [];
         $accept = is_array($strategies['accept'] ?? null) ? $strategies['accept'] : [];
+        $query = is_array($strategies['query'] ?? null) ? $strategies['query'] : [];
 
         $uriParameter = $uri['parameter'] ?? 'version';
         if (! is_string($uriParameter) || $uriParameter === '') {
@@ -73,10 +74,16 @@ final readonly class VersionResolverFactory
             $vendor = 'myapp';
         }
 
+        $queryParameter = $query['parameter'] ?? 'version';
+        if (! is_string($queryParameter) || $queryParameter === '') {
+            $queryParameter = 'version';
+        }
+
         $resolved = match ($resolver) {
             UriVersionResolver::class => new UriVersionResolver($uriParameter, $uriPrefix),
             HeaderVersionResolver::class => new HeaderVersionResolver($headerName),
             AcceptHeaderVersionResolver::class => new AcceptHeaderVersionResolver($vendor),
+            QueryStringVersionResolver::class => new QueryStringVersionResolver($queryParameter),
             default => $this->container->make($resolver),
         };
 

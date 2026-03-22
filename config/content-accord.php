@@ -40,6 +40,7 @@ return [
         | - GaiaTools\ContentAccord\Resolvers\Version\UriVersionResolver
         | - GaiaTools\ContentAccord\Resolvers\Version\HeaderVersionResolver
         | - GaiaTools\ContentAccord\Resolvers\Version\AcceptHeaderVersionResolver
+        | - GaiaTools\ContentAccord\Resolvers\Version\QueryStringVersionResolver
         |
         */
         'resolver' => [
@@ -110,6 +111,14 @@ return [
             */
             'accept' => [
                 'vendor' => env('CONTENT_ACCORD_ACCEPT_VENDOR', 'myapp'),
+            ],
+
+            /*
+            | Query String Strategy: Read version from a query parameter
+            | Example: /api/users?version=2
+            */
+            'query' => [
+                'parameter' => env('CONTENT_ACCORD_QUERY_PARAMETER', 'version'),
             ],
         ],
 

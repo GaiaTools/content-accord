@@ -4,6 +4,7 @@ namespace GaiaTools\ContentAccord\Testing;
 
 use GaiaTools\ContentAccord\Resolvers\Version\AcceptHeaderVersionResolver;
 use GaiaTools\ContentAccord\Resolvers\Version\HeaderVersionResolver;
+use GaiaTools\ContentAccord\Resolvers\Version\QueryStringVersionResolver;
 use GaiaTools\ContentAccord\Routing\RouteVersionMetadata;
 use GaiaTools\ContentAccord\ValueObjects\ApiVersion;
 use Illuminate\Foundation\Testing\TestCase;
@@ -105,6 +106,7 @@ class ApiVersionRequestBuilder
         return match ($firstResolver) {
             HeaderVersionResolver::class => [$uri, $this->withHeaderVersion($headers, $strategies)],
             AcceptHeaderVersionResolver::class => [$uri, $this->withAcceptVersion($headers, $strategies)],
+            QueryStringVersionResolver::class => [$this->withQueryVersion($uri, $strategies), $headers],
             default => [$this->withUriVersion($uri, $method, $strategies), $headers],
         };
     }
@@ -202,6 +204,21 @@ class ApiVersionRequestBuilder
         }
 
         return implode('/', array_values($segments));
+    }
+
+    /**
+     * @param  array<string, array<string, mixed>>  $strategies
+     */
+    private function withQueryVersion(string $uri, array $strategies): string
+    {
+        $paramName = $strategies['query']['parameter'] ?? 'version';
+        if (! is_string($paramName) || $paramName === '') {
+            $paramName = 'version';
+        }
+
+        $separator = str_contains($uri, '?') ? '&' : '?';
+
+        return $uri.$separator.urlencode($paramName).'='.urlencode($this->version);
     }
 
     private function injectVersionSegment(string $uri, string $prefix): string
