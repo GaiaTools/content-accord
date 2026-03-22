@@ -25,8 +25,8 @@ test('service provider swaps in versioned route collection', function () {
 test('service provider builds chained resolver from configuration', function () {
     config([
         'content-accord.versioning.resolver' => [
-            \GaiaTools\ContentAccord\Resolvers\Version\UriVersionResolver::class,
-            \GaiaTools\ContentAccord\Resolvers\Version\HeaderVersionResolver::class,
+            UriVersionResolver::class,
+            HeaderVersionResolver::class,
         ],
         'content-accord.versioning.strategies.uri.parameter' => 'version',
         'content-accord.versioning.strategies.header.name' => 'Api-Version',

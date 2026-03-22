@@ -5,7 +5,7 @@ use GaiaTools\ContentAccord\ValueObjects\ApiVersion;
 use Illuminate\Http\Request;
 
 afterEach(function () {
-    \Mockery::close();
+    Mockery::close();
 });
 
 test('extracts version from vendor media type format', function () {
@@ -57,7 +57,7 @@ test('extracts version with minor from parameter format', function () {
 });
 
 test('returns null when accept header is missing', function () {
-    $request = \Mockery::mock(Request::class);
+    $request = Mockery::mock(Request::class);
     $request->shouldReceive('header')->with('Accept')->andReturn(null);
 
     $resolver = new AcceptHeaderVersionResolver('myapp');
@@ -66,7 +66,7 @@ test('returns null when accept header is missing', function () {
 });
 
 test('returns null when accept header is not a string', function () {
-    $request = \Mockery::mock(Request::class);
+    $request = Mockery::mock(Request::class);
     $request->shouldReceive('header')->with('Accept')->andReturn(['application/json']);
 
     $resolver = new AcceptHeaderVersionResolver('myapp');
