@@ -1,6 +1,6 @@
 ---
 name: content-accord-versioning
-description: Add API versioning to Laravel applications using Content Accord — including route groups, versioning strategies, deprecation headers, attributes, and testing helpers.
+description: "Develops API versioning for Laravel applications using the gaiatools/content-accord package. Activates when installing or configuring Content Accord; declaring versioned route groups with Route::apiVersion(); configuring version resolution strategies (URI path, request header, Accept header, query string); setting up version aliases or chained resolvers; marking API versions as deprecated with sunset dates and deprecation links; enforcing sunset dates with 410 Gone responses; listening to VersionNegotiated or DeprecatedVersionAccessed events; using PHP attributes (#[ApiVersion], #[MapToVersion], #[ApiDeprecate], #[ApiFallback], #[ApiNegotiate]); accessing the resolved version via apiVersion() or NegotiatedContext; writing versioned API tests with InteractsWithApiVersion; or running the api:versions Artisan command. Make sure to use this skill whenever the user works with API versioning, version deprecation, content negotiation, or multi-version route management in Laravel, even if they don't explicitly mention Content Accord."
 ---
 
 # Content Accord API Versioning
@@ -31,22 +31,25 @@ app/Http/Controllers/
 
 Key settings under the `versioning` key:
 
-- `strategy`: `uri` (default), `header`, or `accept`
 - `resolver`: one resolver class or an array tried in order (first non-null wins)
 - `missing_strategy`: `reject` | `default` | `latest` | `require`
 - `default_version`: version used when `missing_strategy` is `default`
 - `fallback`: global fallback flag (bool); overridable per route group
+- `aliases`: map of symbolic names to real version numbers (e.g. `['latest' => '3']`)
 - `versions`: registered versions with optional deprecation metadata
 
 ```php
 'versioning' => [
-    'strategy' => 'uri',                    // env CONTENT_ACCORD_VERSIONING_STRATEGY
     'resolver' => [
         GaiaTools\ContentAccord\Resolvers\Version\UriVersionResolver::class,
     ],
     'missing_strategy' => 'reject',         // env CONTENT_ACCORD_VERSIONING_MISSING
     'default_version' => '1',
     'fallback' => false,
+    'aliases' => [
+        // 'latest' => '3',
+        // 'stable' => '2',
+    ],
     'versions' => [
         '1' => ['deprecated' => false, 'sunset' => null, 'deprecation_link' => null],
         '2' => ['deprecated' => false, 'sunset' => null, 'deprecation_link' => null],
@@ -61,6 +64,7 @@ Strategy-specific options:
     'uri'    => ['prefix' => 'v', 'parameter' => 'version'],   // /api/v1/users
     'header' => ['name' => 'Api-Version'],                      // Api-Version: 1
     'accept' => ['vendor' => 'myapp'],                          // application/vnd.myapp.v1+json
+    'query'  => ['parameter' => 'version'],                     // /api/users?version=2
 ],
 ```
 
@@ -126,54 +130,110 @@ Route::apiVersion('2')
 
 ## Middleware aliases
 
-The three middleware aliases (applied automatically by the fluent builder, or manually in advanced cases):
+Applied automatically by the fluent builder, or added manually in advanced cases:
 
 | Alias | Purpose |
 |---|---|
 | `content-accord.version` | Attach version metadata to the route action |
 | `content-accord.negotiate` | Resolve dimensions and populate `NegotiatedContext` |
 | `content-accord.deprecate` | Add `Deprecation`/`Sunset`/`Link` response headers |
+| `content-accord.enforce-sunset` | Return `410 Gone` once a version's sunset date has passed |
 
-Recommended order when used manually: `version` → `negotiate` → `deprecate`.
+Recommended order when used manually: `version` → `negotiate` → `deprecate` → `enforce-sunset`.
 
 ## Versioning strategies
 
 ### URI (default)
 
-```php
-'versioning' => ['strategy' => 'uri'],
-```
-
 Routes registered at `/api/v1/users` — Laravel dispatches by URL.
+
+```php
+'resolver' => [GaiaTools\ContentAccord\Resolvers\Version\UriVersionResolver::class],
+```
 
 ### Header
 
-```php
-'versioning' => ['strategy' => 'header'],
-```
+Request: `GET /api/users` with `Api-Version: 2`.
 
-Request: `GET /api/users` with `Api-Version: 2` — Content Accord selects the route.
+```php
+'resolver' => [GaiaTools\ContentAccord\Resolvers\Version\HeaderVersionResolver::class],
+```
 
 ### Accept header
 
+Request: `Accept: application/vnd.myapp.v2+json` or `Accept: application/vnd.myapp+json;version=2`.
+
 ```php
-'versioning' => ['strategy' => 'accept'],
+'resolver' => [GaiaTools\ContentAccord\Resolvers\Version\AcceptHeaderVersionResolver::class],
 ```
 
-Request: `Accept: application/vnd.myapp.v2+json` or `Accept: application/vnd.myapp+json;version=2`.
+### Query string
+
+Request: `GET /api/users?version=2`. Parameter name configurable via `strategies.query.parameter`.
+
+```php
+'resolver' => [GaiaTools\ContentAccord\Resolvers\Version\QueryStringVersionResolver::class],
+```
 
 ### Chained resolvers
 
 ```php
-'versioning' => [
-    'resolver' => [
-        GaiaTools\ContentAccord\Resolvers\Version\HeaderVersionResolver::class,
-        GaiaTools\ContentAccord\Resolvers\Version\UriVersionResolver::class,
-    ],
+'resolver' => [
+    GaiaTools\ContentAccord\Resolvers\Version\HeaderVersionResolver::class,
+    GaiaTools\ContentAccord\Resolvers\Version\UriVersionResolver::class,
 ],
 ```
 
 First non-null result wins.
+
+## Version aliases
+
+Map symbolic names to real version numbers so clients can send `Api-Version: latest` or `?version=stable` instead of a number. Supported by URI, header, and query-string resolvers (not Accept header).
+
+```php
+'aliases' => [
+    'latest' => '3',
+    'stable' => '2',
+],
+```
+
+## Sunset enforcement
+
+Add `content-accord.enforce-sunset` to route groups (or globally) alongside `content-accord.deprecate`. Once the current date exceeds the configured sunset date the middleware returns `410 Gone` instead of passing the request through.
+
+```php
+Route::apiVersion('1')
+    ->prefix('api')
+    ->deprecated()
+    ->sunsetDate('2026-06-01')
+    ->middleware(['content-accord.enforce-sunset'])
+    ->group(function () {
+        Route::get('/users', [\App\Http\Controllers\Api\V1\UserController::class, 'index']);
+    });
+```
+
+## Lifecycle events
+
+Two events are fired automatically — no configuration needed. Listen to them in a standard Laravel `EventServiceProvider` or with `Event::listen()`.
+
+**`GaiaTools\ContentAccord\Events\VersionNegotiated`** — fired by `NegotiateContext` after every successful version resolution (including fallback defaults).
+
+**`GaiaTools\ContentAccord\Events\DeprecatedVersionAccessed`** — fired by `DeprecationHeaders` when a request hits a deprecated route and a version is present in the negotiated context.
+
+Both carry `public readonly ApiVersion $version` and `public readonly Request $request`.
+
+```php
+use GaiaTools\ContentAccord\Events\VersionNegotiated;
+use GaiaTools\ContentAccord\Events\DeprecatedVersionAccessed;
+
+Event::listen(VersionNegotiated::class, function (VersionNegotiated $event) {
+    Log::info('Version negotiated', ['version' => (string) $event->version]);
+});
+
+Event::listen(DeprecatedVersionAccessed::class, function (DeprecatedVersionAccessed $event) {
+    // alert, log, or increment a metric
+});
+```
 
 ## PHP attributes
 
@@ -283,7 +343,9 @@ class UserApiTest extends TestCase
 ## Artisan command
 
 ```bash
+# List versions with deprecation metadata and route counts
 php artisan api:versions
-```
 
-Lists all configured versions, deprecation metadata, sunset dates, and route counts per version.
+# Also show each route (method, URI, action) grouped by version
+php artisan api:versions --routes
+```
