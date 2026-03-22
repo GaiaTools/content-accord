@@ -4,7 +4,9 @@ namespace GaiaTools\ContentAccord\Http\Middleware;
 
 use Closure;
 use DateTime;
+use GaiaTools\ContentAccord\Events\DeprecatedVersionAccessed;
 use GaiaTools\ContentAccord\Routing\RouteVersionMetadata;
+use GaiaTools\ContentAccord\ValueObjects\ApiVersion;
 use Illuminate\Http\Request;
 
 final readonly class DeprecationHeaders
@@ -28,6 +30,11 @@ final readonly class DeprecationHeaders
 
         // Add Deprecation header
         $response->headers->set('Deprecation', 'true');
+
+        $version = apiVersion();
+        if ($version instanceof ApiVersion) {
+            event(new DeprecatedVersionAccessed($version, $request));
+        }
 
         // Add Sunset header if configured
         if (isset($metadata['sunset'])) {

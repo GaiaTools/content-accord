@@ -5,7 +5,9 @@ namespace GaiaTools\ContentAccord\Http\Middleware;
 use Closure;
 use GaiaTools\ContentAccord\Attributes\ApiNegotiate;
 use GaiaTools\ContentAccord\Contracts\NegotiationDimension;
+use GaiaTools\ContentAccord\Events\VersionNegotiated;
 use GaiaTools\ContentAccord\Http\NegotiatedContext;
+use GaiaTools\ContentAccord\ValueObjects\ApiVersion;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Route;
 use ReflectionAttribute;
@@ -33,6 +35,10 @@ final readonly class NegotiateContext
             $dimension->validate($resolved, $request);
 
             $this->context->set($dimension->key(), $resolved);
+
+            if ($resolved instanceof ApiVersion) {
+                event(new VersionNegotiated($resolved, $request));
+            }
         }
 
         return $next($request);
