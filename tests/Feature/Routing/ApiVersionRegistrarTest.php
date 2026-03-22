@@ -188,6 +188,29 @@ test('extra middleware is applied alongside version middleware', function () {
         ->and($middleware)->toContain('auth:sanctum');
 });
 
+test('group accepts a file path string like Route::group()', function () {
+    config([
+        'content-accord.versioning.resolver' => [HeaderVersionResolver::class],
+    ]);
+
+    Route::apiVersion('1')->group(dirname(__DIR__, 2).'/fixtures/routes/v1.php');
+
+    $routes = collect(app('router')->getRoutes()->getRoutes());
+    $route = $routes->first(fn ($r) => str_contains($r->uri(), 'widgets'));
+
+    expect($route)->not->toBeNull();
+
+    $middleware = $route->getAction('middleware');
+    $middleware = is_array($middleware) ? $middleware : [$middleware];
+
+    $versionMiddleware = collect($middleware)->first(
+        fn ($m) => is_string($m) && str_starts_with($m, ApiVersionMetadata::class.':')
+    );
+
+    expect($versionMiddleware)->not->toBeNull()
+        ->and($versionMiddleware)->toContain('version=1');
+});
+
 test('apiVersion helper returns null when no context is set', function () {
     $result = apiVersion();
 

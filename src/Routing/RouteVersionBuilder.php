@@ -72,7 +72,7 @@ final class RouteVersionBuilder
         return $this;
     }
 
-    public function group(Closure $callback): void
+    public function group(Closure|string $callback): void
     {
         $versionMiddleware = $this->buildVersionMiddleware();
         $allMiddleware = [$versionMiddleware, ...$this->extraMiddleware];
