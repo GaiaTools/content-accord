@@ -8,6 +8,7 @@ use GaiaTools\ContentAccord\Dimensions\VersioningDimension;
 use GaiaTools\ContentAccord\Enums\MissingVersionStrategy;
 use GaiaTools\ContentAccord\Http\Middleware\ApiVersionMetadata;
 use GaiaTools\ContentAccord\Http\Middleware\DeprecationHeaders;
+use GaiaTools\ContentAccord\Http\Middleware\EnforceSunset;
 use GaiaTools\ContentAccord\Http\Middleware\NegotiateContext;
 use GaiaTools\ContentAccord\Http\NegotiatedContext;
 use GaiaTools\ContentAccord\Resolvers\Version\VersionResolverFactory;
@@ -76,6 +77,7 @@ class ContentAccordServiceProvider extends ServiceProvider
     {
         $router->aliasMiddleware('content-accord.negotiate', NegotiateContext::class);
         $router->aliasMiddleware('content-accord.deprecate', DeprecationHeaders::class);
+        $router->aliasMiddleware('content-accord.enforce-sunset', EnforceSunset::class);
         $router->aliasMiddleware('content-accord.version', ApiVersionMetadata::class);
     }
 

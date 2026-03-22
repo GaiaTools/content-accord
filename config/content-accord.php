@@ -40,6 +40,7 @@ return [
         | - GaiaTools\ContentAccord\Resolvers\Version\UriVersionResolver
         | - GaiaTools\ContentAccord\Resolvers\Version\HeaderVersionResolver
         | - GaiaTools\ContentAccord\Resolvers\Version\AcceptHeaderVersionResolver
+        | - GaiaTools\ContentAccord\Resolvers\Version\QueryStringVersionResolver
         |
         */
         'resolver' => [
@@ -111,6 +112,34 @@ return [
             'accept' => [
                 'vendor' => env('CONTENT_ACCORD_ACCEPT_VENDOR', 'myapp'),
             ],
+
+            /*
+            | Query String Strategy: Read version from a query parameter
+            | Example: /api/users?version=2
+            */
+            'query' => [
+                'parameter' => env('CONTENT_ACCORD_QUERY_PARAMETER', 'version'),
+            ],
+        ],
+
+        /*
+        |----------------------------------------------------------------------
+        | Version Aliases
+        |----------------------------------------------------------------------
+        |
+        | Map symbolic names to concrete version numbers. Resolvers that
+        | support aliases (URI, header, query string) will recognise these
+        | names and resolve them to the configured version before negotiation.
+        |
+        | Example:
+        |   'aliases' => ['latest' => '3', 'stable' => '2'],
+        |
+        | Clients may then request `Api-Version: latest` instead of
+        | `Api-Version: 3`, or append `?version=stable` to a URL.
+        |
+        */
+        'aliases' => [
+            // 'latest' => '1',
         ],
 
         /*
