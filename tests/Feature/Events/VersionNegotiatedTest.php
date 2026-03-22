@@ -1,5 +1,7 @@
 <?php
 
+use GaiaTools\ContentAccord\Contracts\ContextResolver;
+use GaiaTools\ContentAccord\Contracts\NegotiationDimension;
 use GaiaTools\ContentAccord\Dimensions\VersioningDimension;
 use GaiaTools\ContentAccord\Enums\MissingVersionStrategy;
 use GaiaTools\ContentAccord\Events\VersionNegotiated;
@@ -84,21 +86,33 @@ test('VersionNegotiated is not fired for non-version dimensions', function () {
 
     $context = new NegotiatedContext;
 
-    $localeDimension = new class implements \GaiaTools\ContentAccord\Contracts\NegotiationDimension
+    $localeDimension = new class implements NegotiationDimension
     {
-        public function key(): string { return 'locale'; }
-
-        public function resolver(): \GaiaTools\ContentAccord\Contracts\ContextResolver
+        public function key(): string
         {
-            return new class implements \GaiaTools\ContentAccord\Contracts\ContextResolver
+            return 'locale';
+        }
+
+        public function resolver(): ContextResolver
+        {
+            return new class implements ContextResolver
             {
-                public function resolve(Request $request): mixed { return 'en'; }
+                public function resolve(Request $request): mixed
+                {
+                    return 'en';
+                }
             };
         }
 
-        public function validate(mixed $resolved, Request $request): bool { return true; }
+        public function validate(mixed $resolved, Request $request): bool
+        {
+            return true;
+        }
 
-        public function fallback(Request $request): mixed { return 'en'; }
+        public function fallback(Request $request): mixed
+        {
+            return 'en';
+        }
     };
 
     $middleware = new NegotiateContext([$localeDimension], $context);

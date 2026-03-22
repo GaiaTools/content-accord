@@ -1,7 +1,6 @@
 <?php
 
 use GaiaTools\ContentAccord\Events\DeprecatedVersionAccessed;
-use GaiaTools\ContentAccord\Events\VersionNegotiated;
 use GaiaTools\ContentAccord\Http\Middleware\DeprecationHeaders;
 use GaiaTools\ContentAccord\Http\NegotiatedContext;
 use GaiaTools\ContentAccord\ValueObjects\ApiVersion;

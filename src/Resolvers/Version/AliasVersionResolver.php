@@ -22,7 +22,7 @@ use Illuminate\Http\Request;
 final readonly class AliasVersionResolver implements VersionResolver
 {
     /**
-     * @param  array<string, string>  $aliases       Map of alias => real version string
+     * @param  array<string, string>  $aliases  Map of alias => real version string
      * @param  Closure(Request): ?string  $rawExtractor  Returns the raw version string from the request
      */
     public function __construct(
