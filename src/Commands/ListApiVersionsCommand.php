@@ -10,7 +10,7 @@ use Symfony\Component\Console\Helper\Table;
 
 class ListApiVersionsCommand extends Command
 {
-    protected $signature = 'api:versions';
+    protected $signature = 'api:versions {--routes : Show individual routes for each version}';
 
     protected $description = 'List registered API versions and their deprecation metadata.';
 
@@ -45,7 +45,60 @@ class ListApiVersionsCommand extends Command
         $table->setRows($rows);
         $table->render();
 
+        if ($this->option('routes')) {
+            $this->listRoutesByVersion($router, $versions);
+        }
+
         return self::SUCCESS;
+    }
+
+    /**
+     * @param  array<string, array<string, mixed>>  $versions
+     */
+    private function listRoutesByVersion(Router $router, array $versions): void
+    {
+        $config = config()->array('content-accord.versioning', []);
+
+        foreach (array_keys($versions) as $version) {
+            $rows = [];
+
+            foreach ($router->getRoutes()->getRoutes() as $route) {
+                $metadata = RouteVersionMetadata::resolve($route, $config);
+                $versionString = $metadata['version'] ?? null;
+
+                if (! is_string($versionString) || $versionString === '') {
+                    continue;
+                }
+
+                try {
+                    $parsed = ApiVersion::parse($versionString);
+                } catch (\Throwable) {
+                    continue;
+                }
+
+                if ((string) $parsed->major !== (string) $version) {
+                    continue;
+                }
+
+                $action = $route->getAction('controller') ?? $route->getAction('uses');
+                $rows[] = [
+                    implode('|', $route->methods()),
+                    $route->uri(),
+                    is_string($action) ? $action : 'Closure',
+                ];
+            }
+
+            if ($rows === []) {
+                continue;
+            }
+
+            $this->newLine();
+            $this->comment("Version {$version} routes:");
+            $table = new Table($this->output);
+            $table->setHeaders(['Method', 'URI', 'Action']);
+            $table->setRows($rows);
+            $table->render();
+        }
     }
 
     /**
