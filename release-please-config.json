@@ -2,10 +2,11 @@
   "include-v-in-tag": true,
   "include-component-in-tag": false,
   "pull-request-title-pattern": "chore: release ${version}",
+  "bootstrap-sha": "96ba5845d35988a341e98f22438ea3a7ae1cd4e8",
   "packages": {
     ".": {
       "release-type": "php",
-      "package-name": "gaiatools/fulcrum-settings",
+      "package-name": "gaiatools/content-accord",
       "changelog-path": "CHANGELOG.md"
     }
   }
