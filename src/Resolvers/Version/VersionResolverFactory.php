@@ -47,48 +47,8 @@ final readonly class VersionResolverFactory
             throw new InvalidArgumentException('Configured resolver must be a class name, binding, or ContextResolver instance.');
         }
 
-        $strategies = $this->config['strategies'] ?? [];
-        if (! is_array($strategies)) {
-            $strategies = [];
-        }
-
-        $uri = is_array($strategies['uri'] ?? null) ? $strategies['uri'] : [];
-        $header = is_array($strategies['header'] ?? null) ? $strategies['header'] : [];
-        $accept = is_array($strategies['accept'] ?? null) ? $strategies['accept'] : [];
-        $query = is_array($strategies['query'] ?? null) ? $strategies['query'] : [];
-
-        $uriParameter = $uri['parameter'] ?? 'version';
-        if (! is_string($uriParameter) || $uriParameter === '') {
-            $uriParameter = 'version';
-        }
-
-        $uriPrefix = $uri['prefix'] ?? 'v';
-        if (! is_string($uriPrefix) || $uriPrefix === '') {
-            $uriPrefix = 'v';
-        }
-
-        $headerName = $header['name'] ?? 'Api-Version';
-        if (! is_string($headerName) || $headerName === '') {
-            $headerName = 'Api-Version';
-        }
-
-        $vendor = $accept['vendor'] ?? 'myapp';
-        if (! is_string($vendor) || $vendor === '') {
-            $vendor = 'myapp';
-        }
-
-        $queryParameter = $query['parameter'] ?? 'version';
-        if (! is_string($queryParameter) || $queryParameter === '') {
-            $queryParameter = 'version';
-        }
-
-        $resolved = match ($resolver) {
-            UriVersionResolver::class => new UriVersionResolver($uriParameter, $uriPrefix),
-            HeaderVersionResolver::class => new HeaderVersionResolver($headerName),
-            AcceptHeaderVersionResolver::class => new AcceptHeaderVersionResolver($vendor),
-            QueryStringVersionResolver::class => new QueryStringVersionResolver($queryParameter),
-            default => $this->container->make($resolver),
-        };
+        $strategies = is_array($this->config['strategies'] ?? null) ? $this->config['strategies'] : [];
+        $resolved = $this->buildResolverInstance($resolver, $strategies);
 
         if (! $resolved instanceof ContextResolver) {
             throw new InvalidArgumentException('Configured resolver must implement ContextResolver.');
@@ -104,20 +64,42 @@ final readonly class VersionResolverFactory
     /**
      * @param  array<string, mixed>  $strategies
      */
+    private function buildResolverInstance(string $resolver, array $strategies): mixed
+    {
+        $uri = is_array($strategies['uri'] ?? null) ? $strategies['uri'] : [];
+        $header = is_array($strategies['header'] ?? null) ? $strategies['header'] : [];
+        $accept = is_array($strategies['accept'] ?? null) ? $strategies['accept'] : [];
+        $query = is_array($strategies['query'] ?? null) ? $strategies['query'] : [];
+
+        return match ($resolver) {
+            UriVersionResolver::class => new UriVersionResolver(
+                $this->stringOrDefault($uri['parameter'] ?? null, 'version'),
+                $this->stringOrDefault($uri['prefix'] ?? null, 'v'),
+            ),
+            HeaderVersionResolver::class => new HeaderVersionResolver(
+                $this->stringOrDefault($header['name'] ?? null, 'Api-Version'),
+            ),
+            AcceptHeaderVersionResolver::class => new AcceptHeaderVersionResolver(
+                $this->stringOrDefault($accept['vendor'] ?? null, 'myapp'),
+            ),
+            QueryStringVersionResolver::class => new QueryStringVersionResolver(
+                $this->stringOrDefault($query['parameter'] ?? null, 'version'),
+            ),
+            default => $this->container->make($resolver),
+        };
+    }
+
+    private function stringOrDefault(mixed $value, string $default): string
+    {
+        return is_string($value) && $value !== '' ? $value : $default;
+    }
+
+    /**
+     * @param  array<string, mixed>  $strategies
+     */
     private function maybeWrapWithAliases(VersionResolver $resolver, string $resolverClass, array $strategies): VersionResolver
     {
-        $aliases = $this->config['aliases'] ?? [];
-        if (! is_array($aliases) || $aliases === []) {
-            return $resolver;
-        }
-
-        /** @var array<string, string> $normalizedAliases */
-        $normalizedAliases = [];
-        foreach ($aliases as $key => $value) {
-            if (is_string($key) && $key !== '' && (is_string($value) || is_int($value))) {
-                $normalizedAliases[$key] = (string) $value;
-            }
-        }
+        $normalizedAliases = $this->normalizeAliases();
 
         if ($normalizedAliases === []) {
             return $resolver;
@@ -125,11 +107,29 @@ final readonly class VersionResolverFactory
 
         $rawExtractor = $this->buildRawExtractor($resolverClass, $strategies);
 
-        if ($rawExtractor === null) {
-            return $resolver;
+        return $rawExtractor !== null
+            ? new AliasVersionResolver($resolver, $normalizedAliases, $rawExtractor)
+            : $resolver;
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function normalizeAliases(): array
+    {
+        $aliases = $this->config['aliases'] ?? [];
+        if (! is_array($aliases)) {
+            return [];
         }
 
-        return new AliasVersionResolver($resolver, $normalizedAliases, $rawExtractor);
+        $normalized = [];
+        foreach ($aliases as $key => $value) {
+            if (is_string($key) && $key !== '' && (is_string($value) || is_int($value))) {
+                $normalized[$key] = (string) $value;
+            }
+        }
+
+        return $normalized;
     }
 
     /**
@@ -142,22 +142,23 @@ final readonly class VersionResolverFactory
         $header = is_array($strategies['header'] ?? null) ? $strategies['header'] : [];
         $query = is_array($strategies['query'] ?? null) ? $strategies['query'] : [];
 
+        $uriParam = $this->stringOrDefault($uri['parameter'] ?? null, 'version');
+        $headerName = $this->stringOrDefault($header['name'] ?? null, 'Api-Version');
+        $queryParam = $this->stringOrDefault($query['parameter'] ?? null, 'version');
+
         return match ($resolverClass) {
-            UriVersionResolver::class => static function (Request $request) use ($uri): ?string {
-                $parameter = is_string($uri['parameter'] ?? null) && $uri['parameter'] !== '' ? $uri['parameter'] : 'version';
-                $value = $request->route()?->parameter($parameter);
+            UriVersionResolver::class => static function (Request $request) use ($uriParam): ?string {
+                $value = $request->route()?->parameter($uriParam);
 
                 return is_string($value) ? $value : null;
             },
-            HeaderVersionResolver::class => static function (Request $request) use ($header): ?string {
-                $name = is_string($header['name'] ?? null) && $header['name'] !== '' ? $header['name'] : 'Api-Version';
-                $value = $request->header($name);
+            HeaderVersionResolver::class => static function (Request $request) use ($headerName): ?string {
+                $value = $request->header($headerName);
 
                 return is_string($value) ? $value : null;
             },
-            QueryStringVersionResolver::class => static function (Request $request) use ($query): ?string {
-                $parameter = is_string($query['parameter'] ?? null) && $query['parameter'] !== '' ? $query['parameter'] : 'version';
-                $value = $request->query($parameter);
+            QueryStringVersionResolver::class => static function (Request $request) use ($queryParam): ?string {
+                $value = $request->query($queryParam);
 
                 return is_string($value) ? $value : null;
             },

@@ -5,6 +5,7 @@ namespace GaiaTools\ContentAccord\Commands;
 use GaiaTools\ContentAccord\Routing\RouteVersionMetadata;
 use GaiaTools\ContentAccord\ValueObjects\ApiVersion;
 use Illuminate\Console\Command;
+use Illuminate\Routing\Route;
 use Illuminate\Routing\Router;
 use Symfony\Component\Console\Helper\Table;
 
@@ -19,8 +20,6 @@ class ListApiVersionsCommand extends Command
         $versions = config()->array('content-accord.versioning.versions', []);
         $versions = array_filter($versions, static fn ($metadata) => is_array($metadata));
         /** @var array<string, array<string, mixed>> $versions */
-        $versions = $versions;
-
         if ($versions === []) {
             $this->info('No API versions configured.');
 
@@ -60,33 +59,10 @@ class ListApiVersionsCommand extends Command
         $config = config()->array('content-accord.versioning', []);
 
         foreach (array_keys($versions) as $version) {
-            $rows = [];
-
-            foreach ($router->getRoutes()->getRoutes() as $route) {
-                $metadata = RouteVersionMetadata::resolve($route, $config);
-                $versionString = $metadata['version'] ?? null;
-
-                if (! is_string($versionString) || $versionString === '') {
-                    continue;
-                }
-
-                try {
-                    $parsed = ApiVersion::parse($versionString);
-                } catch (\Throwable) {
-                    continue;
-                }
-
-                if ((string) $parsed->major !== (string) $version) {
-                    continue;
-                }
-
-                $action = $route->getAction('controller') ?? $route->getAction('uses');
-                $rows[] = [
-                    implode('|', $route->methods()),
-                    $route->uri(),
-                    is_string($action) ? $action : 'Closure',
-                ];
-            }
+            $rows = array_filter(array_map(
+                fn ($route) => $this->buildRouteRow($route, (string) $version, $config),
+                $router->getRoutes()->getRoutes(),
+            ));
 
             if ($rows === []) {
                 continue;
@@ -96,8 +72,43 @@ class ListApiVersionsCommand extends Command
             $this->comment("Version {$version} routes:");
             $table = new Table($this->output);
             $table->setHeaders(['Method', 'URI', 'Action']);
-            $table->setRows($rows);
+            $table->setRows(array_values($rows));
             $table->render();
+        }
+    }
+
+    /**
+     * @param  array<string, mixed>  $config
+     * @return array<int, string>|null
+     */
+    private function buildRouteRow(Route $route, string $version, array $config): ?array
+    {
+        $metadata = RouteVersionMetadata::resolve($route, $config);
+        $parsed = $this->parseRouteVersion($metadata['version'] ?? null);
+
+        if ($parsed === null || (string) $parsed->major !== $version) {
+            return null;
+        }
+
+        $action = $route->getAction('controller') ?? $route->getAction('uses');
+
+        return [
+            implode('|', $route->methods()),
+            $route->uri(),
+            is_string($action) ? $action : 'Closure',
+        ];
+    }
+
+    private function parseRouteVersion(mixed $versionString): ?ApiVersion
+    {
+        if (! is_string($versionString) || $versionString === '') {
+            return null;
+        }
+
+        try {
+            return ApiVersion::parse($versionString);
+        } catch (\Throwable) {
+            return null;
         }
     }
 
