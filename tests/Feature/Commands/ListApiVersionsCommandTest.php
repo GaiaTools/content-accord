@@ -74,7 +74,7 @@ test('api list command --summary shows version table with deprecation metadata',
         ->and($output)->toContain('no');
 });
 
-test('api list command unversioned routes show empty version column', function () {
+test('api list command --all includes unversioned routes with empty version column', function () {
     config([
         'content-accord.versioning.versions' => [
             '1' => ['deprecated' => false],
@@ -89,7 +89,7 @@ test('api list command unversioned routes show empty version column', function (
     // Unversioned route (no content-accord middleware)
     Route::get('/health', [CommandTestController::class, 'index']);
 
-    Artisan::call('api:list');
+    Artisan::call('api:list', ['--all' => true]);
 
     $output = Artisan::output();
 
@@ -98,7 +98,7 @@ test('api list command unversioned routes show empty version column', function (
         ->and($output)->toContain('health');
 });
 
-test('api list command --versioned filters out unversioned routes', function () {
+test('api list command only shows versioned routes by default', function () {
     config([
         'content-accord.versioning.versions' => [
             '1' => ['deprecated' => false],
@@ -111,7 +111,7 @@ test('api list command --versioned filters out unversioned routes', function () 
 
     Route::get('/health', [CommandTestController::class, 'index']);
 
-    Artisan::call('api:list', ['--versioned' => true]);
+    Artisan::call('api:list');
 
     $output = Artisan::output();
 
