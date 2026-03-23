@@ -1,8 +1,6 @@
 <?php
 
 use GaiaTools\ContentAccord\Commands\ListApiVersionsCommand;
-use Illuminate\Routing\RouteCollection;
-use Illuminate\Routing\Router;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Route;
 
@@ -14,15 +12,15 @@ class CommandTestController
     }
 }
 
-test('api versions command outputs message when no versions configured', function () {
+test('api list command outputs message when no versions configured and --summary used', function () {
     config(['content-accord.versioning.versions' => []]);
 
-    Artisan::call('api:versions');
+    Artisan::call('api:list', ['--summary' => true]);
 
     expect(Artisan::output())->toContain('No API versions configured.');
 });
 
-test('api versions command lists routes per version with --routes flag', function () {
+test('api list command shows version column in route output', function () {
     config([
         'content-accord.versioning.versions' => [
             '1' => ['deprecated' => false, 'sunset' => null, 'deprecation_link' => null],
@@ -33,65 +31,15 @@ test('api versions command lists routes per version with --routes flag', functio
         Route::get('/widgets', [CommandTestController::class, 'index']);
     });
 
-    Artisan::call('api:versions', ['--routes' => true]);
+    Artisan::call('api:list');
 
     $output = Artisan::output();
 
-    // Route uris in Laravel don't carry a leading slash
-    expect($output)->toContain('Version 1 routes')
+    expect($output)->toContain('v1')
         ->and($output)->toContain('widgets');
 });
 
-test('api versions command --routes flag skips versions with no matching routes', function () {
-    config([
-        'content-accord.versioning.versions' => [
-            '1' => ['deprecated' => false],
-            '2' => ['deprecated' => false],
-        ],
-    ]);
-
-    // Only register routes for v1
-    Route::middleware('content-accord.version:1')->group(function () {
-        Route::get('/things', [CommandTestController::class, 'index']);
-    });
-
-    Artisan::call('api:versions', ['--routes' => true]);
-
-    $output = Artisan::output();
-
-    expect($output)->toContain('Version 1 routes')
-        ->and($output)->not->toContain('Version 2 routes');
-});
-
-test('listRoutesByVersion catch block skips routes with unparseable version string', function () {
-    // Call the private listRoutesByVersion directly via reflection to bypass
-    // countRoutesByVersion (which has no try/catch and would throw first).
-
-    config(['content-accord.versioning.versions' => ['1' => []]]);
-
-    // A route whose api_version cannot be parsed by ApiVersion::parse
-    $badRoute = new Illuminate\Routing\Route('GET', '/bad', fn () => 'ok');
-    $badAction = $badRoute->getAction();
-    $badAction['api_version'] = 'not-a-version!!!';
-    $badRoute->setAction($badAction);
-
-    $collection = new RouteCollection;
-    $collection->add($badRoute);
-
-    $mockRouter = Mockery::mock(Router::class);
-    $mockRouter->shouldReceive('getRoutes')->andReturn($collection);
-
-    $command = new ListApiVersionsCommand;
-
-    $method = new ReflectionMethod($command, 'listRoutesByVersion');
-    $method->setAccessible(true);
-    // Passes without throwing — invalid version is caught and skipped (lines 75-76)
-    $method->invoke($command, $mockRouter, ['1' => []]);
-
-    expect(true)->toBeTrue();
-});
-
-test('api versions command lists configured versions with route counts', function () {
+test('api list command --summary shows version table with deprecation metadata', function () {
     config([
         'content-accord.versioning.versions' => [
             '1' => [
@@ -116,7 +64,7 @@ test('api versions command lists configured versions with route counts', functio
         Route::get('/posts', [CommandTestController::class, 'index']);
     });
 
-    Artisan::call('api:versions');
+    Artisan::call('api:list', ['--summary' => true]);
 
     $output = Artisan::output();
 
@@ -124,4 +72,49 @@ test('api versions command lists configured versions with route counts', functio
         ->and($output)->toContain('2')
         ->and($output)->toContain('yes')
         ->and($output)->toContain('no');
+});
+
+test('api list command unversioned routes show empty version column', function () {
+    config([
+        'content-accord.versioning.versions' => [
+            '1' => ['deprecated' => false],
+        ],
+    ]);
+
+    // Versioned route
+    Route::middleware('content-accord.version:1')->group(function () {
+        Route::get('/things', [CommandTestController::class, 'index']);
+    });
+
+    // Unversioned route (no content-accord middleware)
+    Route::get('/health', [CommandTestController::class, 'index']);
+
+    Artisan::call('api:list');
+
+    $output = Artisan::output();
+
+    expect($output)->toContain('v1')
+        ->and($output)->toContain('things')
+        ->and($output)->toContain('health');
+});
+
+test('api list command routes output includes version in json', function () {
+    config([
+        'content-accord.versioning.versions' => [
+            '1' => ['deprecated' => false],
+        ],
+    ]);
+
+    Route::middleware('content-accord.version:1')->group(function () {
+        Route::get('/widgets', [CommandTestController::class, 'index']);
+    });
+
+    Artisan::call('api:list', ['--json' => true]);
+
+    $json = json_decode(Artisan::output(), true);
+
+    $versioned = collect($json)->firstWhere('uri', 'widgets');
+
+    expect($versioned)->not->toBeNull()
+        ->and($versioned['version'])->toBe('v1');
 });
