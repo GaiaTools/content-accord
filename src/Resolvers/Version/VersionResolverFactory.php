@@ -142,22 +142,23 @@ final readonly class VersionResolverFactory
         $header = is_array($strategies['header'] ?? null) ? $strategies['header'] : [];
         $query = is_array($strategies['query'] ?? null) ? $strategies['query'] : [];
 
+        $uriParam = $this->stringOrDefault($uri['parameter'] ?? null, 'version');
+        $headerName = $this->stringOrDefault($header['name'] ?? null, 'Api-Version');
+        $queryParam = $this->stringOrDefault($query['parameter'] ?? null, 'version');
+
         return match ($resolverClass) {
-            UriVersionResolver::class => static function (Request $request) use ($uri): ?string {
-                $parameter = is_string($uri['parameter'] ?? null) && $uri['parameter'] !== '' ? $uri['parameter'] : 'version';
-                $value = $request->route()?->parameter($parameter);
+            UriVersionResolver::class => static function (Request $request) use ($uriParam): ?string {
+                $value = $request->route()?->parameter($uriParam);
 
                 return is_string($value) ? $value : null;
             },
-            HeaderVersionResolver::class => static function (Request $request) use ($header): ?string {
-                $name = is_string($header['name'] ?? null) && $header['name'] !== '' ? $header['name'] : 'Api-Version';
-                $value = $request->header($name);
+            HeaderVersionResolver::class => static function (Request $request) use ($headerName): ?string {
+                $value = $request->header($headerName);
 
                 return is_string($value) ? $value : null;
             },
-            QueryStringVersionResolver::class => static function (Request $request) use ($query): ?string {
-                $parameter = is_string($query['parameter'] ?? null) && $query['parameter'] !== '' ? $query['parameter'] : 'version';
-                $value = $request->query($parameter);
+            QueryStringVersionResolver::class => static function (Request $request) use ($queryParam): ?string {
+                $value = $request->query($queryParam);
 
                 return is_string($value) ? $value : null;
             },
