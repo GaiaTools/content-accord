@@ -1,6 +1,5 @@
 <?php
 
-use GaiaTools\ContentAccord\Commands\ListApiVersionsCommand;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Route;
 
