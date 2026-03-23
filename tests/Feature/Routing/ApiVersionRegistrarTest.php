@@ -211,6 +211,72 @@ test('group accepts a file path string like Route::group()', function () {
         ->and($versionMiddleware)->toContain('version=1');
 });
 
+test('string resolver config (not array) without URI resolver does not add prefix', function () {
+    config([
+        'content-accord.versioning.resolver' => HeaderVersionResolver::class,
+    ]);
+
+    Route::apiVersion('3')->prefix('api')->group(function () {
+        Route::get('/things', fn () => 'ok');
+    });
+
+    $routes = collect(app('router')->getRoutes()->getRoutes());
+    $route = $routes->first(fn ($r) => str_contains($r->uri(), 'things'));
+
+    expect($route)->not->toBeNull()
+        ->and($route->uri())->toBe('api/things');
+});
+
+test('string URI resolver config (not array) adds version prefix', function () {
+    config([
+        'content-accord.versioning.resolver' => UriVersionResolver::class,
+        'content-accord.versioning.strategies.uri.prefix' => 'v',
+    ]);
+
+    Route::apiVersion('4')->group(function () {
+        Route::get('/stuff', fn () => 'ok');
+    });
+
+    $routes = collect(app('router')->getRoutes()->getRoutes());
+    $route = $routes->first(fn ($r) => str_contains($r->uri(), 'stuff'));
+
+    expect($route)->not->toBeNull()
+        ->and($route->uri())->toBe('v4/stuff');
+});
+
+test('resolvePrefix uses default prefix when uri.prefix config is empty string', function () {
+    config([
+        'content-accord.versioning.resolver' => UriVersionResolver::class,
+        'content-accord.versioning.strategies.uri.prefix' => '',
+    ]);
+
+    Route::apiVersion('5')->group(function () {
+        Route::get('/empty-prefix', fn () => 'ok');
+    });
+
+    $routes = collect(app('router')->getRoutes()->getRoutes());
+    $route = $routes->first(fn ($r) => str_contains($r->uri(), 'empty-prefix'));
+
+    expect($route)->not->toBeNull()
+        ->and($route->uri())->toBe('v5/empty-prefix');
+});
+
+test('resolver config is null so prefix is not added', function () {
+    config([
+        'content-accord.versioning.resolver' => null,
+    ]);
+
+    Route::apiVersion('6')->group(function () {
+        Route::get('/null-resolver', fn () => 'ok');
+    });
+
+    $routes = collect(app('router')->getRoutes()->getRoutes());
+    $route = $routes->first(fn ($r) => str_contains($r->uri(), 'null-resolver'));
+
+    expect($route)->not->toBeNull()
+        ->and($route->uri())->toBe('null-resolver');
+});
+
 test('apiVersion helper returns null when no context is set', function () {
     $result = apiVersion();
 

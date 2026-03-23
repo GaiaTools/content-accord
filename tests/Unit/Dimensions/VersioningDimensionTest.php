@@ -265,6 +265,27 @@ test('fallback throws exception with require strategy', function () {
     $dimension->fallback($request);
 })->throws(MissingVersionException::class);
 
+test('fallback throws when latest strategy and no supported versions', function () {
+    $resolver = new class implements ContextResolver
+    {
+        public function resolve(Request $request): mixed
+        {
+            return null;
+        }
+    };
+
+    $dimension = new VersioningDimension(
+        resolver: $resolver,
+        missingStrategy: MissingVersionStrategy::LatestVersion,
+        defaultVersion: null,
+        supportedVersions: []
+    );
+
+    $request = Request::create('/test');
+
+    $dimension->fallback($request);
+})->throws(MissingVersionException::class, 'No supported versions configured');
+
 test('fallback with require strategy includes supported versions in message', function () {
     $resolver = new class implements ContextResolver
     {
