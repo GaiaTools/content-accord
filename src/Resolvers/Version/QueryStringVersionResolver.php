@@ -17,18 +17,12 @@ final readonly class QueryStringVersionResolver implements VersionResolver
     {
         $versionString = $request->query($this->parameterName);
 
-        if (! is_string($versionString) || $versionString === '') {
-            return null;
-        }
-
-        $versionString = trim($versionString);
-
-        if ($versionString === '') {
+        if (! is_string($versionString) || trim($versionString) === '') {
             return null;
         }
 
         try {
-            return ApiVersion::parse($versionString);
+            return ApiVersion::parse(trim($versionString));
         } catch (InvalidVersionFormatException) {
             return null;
         }
