@@ -6,6 +6,7 @@ use Closure;
 use DateTime;
 use GaiaTools\ContentAccord\Routing\RouteVersionMetadata;
 use Illuminate\Http\Request;
+use Illuminate\Routing\Route;
 use Symfony\Component\HttpFoundation\Response;
 use Throwable;
 
@@ -22,26 +23,9 @@ final readonly class EnforceSunset
     public function handle(Request $request, Closure $next): mixed
     {
         $route = $request->route();
+        $sunsetDate = $route ? $this->parseSunsetDate($route) : null;
 
-        if (! $route) {
-            return $next($request);
-        }
-
-        $metadata = RouteVersionMetadata::resolve($route, config()->array('content-accord.versioning', []));
-        $sunset = $metadata['sunset'] ?? null;
-
-        if (! is_string($sunset) || $sunset === '') {
-            return $next($request);
-        }
-
-        try {
-            $sunsetDate = new DateTime($sunset);
-        } catch (Throwable) {
-            // Unparseable sunset date — do not block the request
-            return $next($request);
-        }
-
-        if (new DateTime > $sunsetDate) {
+        if ($sunsetDate !== null && new DateTime > $sunsetDate) {
             return response()->json([
                 'message' => 'This API version has been sunset and is no longer available.',
                 'sunset' => $sunsetDate->format('Y-m-d'),
@@ -49,5 +33,21 @@ final readonly class EnforceSunset
         }
 
         return $next($request);
+    }
+
+    private function parseSunsetDate(Route $route): ?DateTime
+    {
+        $metadata = RouteVersionMetadata::resolve($route, config()->array('content-accord.versioning', []));
+        $sunset = $metadata['sunset'] ?? null;
+
+        if (! is_string($sunset) || $sunset === '') {
+            return null;
+        }
+
+        try {
+            return new DateTime($sunset);
+        } catch (Throwable) {
+            return null;
+        }
     }
 }
