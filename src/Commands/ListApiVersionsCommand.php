@@ -6,6 +6,7 @@ use GaiaTools\ContentAccord\Routing\RouteVersionMetadata;
 use GaiaTools\ContentAccord\ValueObjects\ApiVersion;
 use Illuminate\Foundation\Console\RouteListCommand;
 use Illuminate\Routing\Route;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Stringable;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Helper\Table;
@@ -83,7 +84,7 @@ class ListApiVersionsCommand extends RouteListCommand
     }
 
     /**
-     * @param \Illuminate\Support\Collection<int, array{domain: string|null, method: string, uri: string, name: string|null, action: string|null, middleware: string|null, path: string|null, vendor: bool, version: string|null}> $routes
+     * @param  Collection<int, array{domain: string|null, method: string, uri: string, name: string|null, action: string|null, middleware: string|null, path: string|null, vendor: bool, version: string|null}>  $routes
      * @return array<int, mixed>
      */
     protected function forCli($routes): array
