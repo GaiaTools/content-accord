@@ -70,6 +70,15 @@ test('uses custom parameter name', function () {
         ->and($version->major)->toBe(2);
 });
 
+test('returns null when query parameter value is only whitespace', function () {
+    // URL-encoded space: ?version=%20
+    $request = Request::create('/api/users', 'GET', ['version' => '   ']);
+
+    $resolver = new QueryStringVersionResolver('version');
+
+    expect($resolver->resolve($request))->toBeNull();
+});
+
 test('returns null when only a different parameter is present', function () {
     $request = Request::create('/api/users?v=1');
 

@@ -176,6 +176,18 @@ test('prefix check is case insensitive', function () {
         ->and($version->major)->toBe(2);
 });
 
+test('returns null when route action api_version cannot be parsed', function () {
+    $request = Request::create('/api/v2/users');
+    $route = new Route('GET', '/api/v2/users', []);
+    $route->setAction(['api_version' => 'invalid-version-string!']);
+    $route->bind($request);
+    $request->setRouteResolver(fn () => $route);
+
+    $resolver = new UriVersionResolver('version', 'v');
+
+    expect($resolver->resolve($request))->toBeNull();
+});
+
 test('route action value is resolved without prefix enforcement', function () {
     $request = Request::create('/api/v2/users');
     $route = new Route('GET', '/api/v2/users', []);
