@@ -16,7 +16,7 @@ class ListApiVersionsCommand extends RouteListCommand
 {
     protected $name = 'api:list';
 
-    protected $description = 'List registered API versions and their routes.';
+    protected $description = 'List routes that belong to a registered API version.';
 
     /** @var string[] */
     protected $headers = ['Domain', 'Method', 'URI', 'Name', 'Action', 'Middleware', 'Path', 'Version'];
@@ -36,7 +36,7 @@ class ListApiVersionsCommand extends RouteListCommand
     {
         return array_merge(parent::getOptions(), [
             ['summary', null, InputOption::VALUE_NONE, 'Show a version summary table instead of individual routes'],
-            ['versioned', null, InputOption::VALUE_NONE, 'Only show routes that have an API version assigned'],
+            ['all', null, InputOption::VALUE_NONE, 'Include routes that have no API version assigned'],
         ]);
     }
 
@@ -56,7 +56,7 @@ class ListApiVersionsCommand extends RouteListCommand
             ? $this->formatVersion($versionString)
             : null;
 
-        if ($this->option('versioned') && $info['version'] === null) {
+        if (! $this->option('all') && $info['version'] === null) {
             return null;
         }
 
