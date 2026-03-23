@@ -32,6 +32,7 @@ class ListApiVersionsCommand extends RouteListCommand
         parent::handle();
     }
 
+    /** @return array<int, mixed> */
     protected function getOptions(): array
     {
         return array_merge(parent::getOptions(), [
@@ -40,46 +41,68 @@ class ListApiVersionsCommand extends RouteListCommand
         ]);
     }
 
+    /**
+     * @return array{domain: string|null, method: string, uri: string, name: string|null, action: string|null, middleware: string|null, path: string|null, vendor: bool, version: string|null}|null
+     */
     protected function getRouteInformation(Route $route): ?array
     {
         $info = parent::getRouteInformation($route);
-
-        if ($info === null) {
-            return null;
-        }
 
         $config = config()->array('content-accord.versioning', []);
         $metadata = RouteVersionMetadata::resolve($route, $config);
         $versionString = $metadata['version'] ?? null;
 
-        $info['version'] = is_string($versionString) && $versionString !== ''
+        $version = is_string($versionString) && $versionString !== ''
             ? $this->formatVersion($versionString)
             : null;
 
-        if (! $this->option('all') && $info['version'] === null) {
+        if (! $this->option('all') && $version === null) {
             return null;
         }
 
-        return $info;
+        $domain = $info['domain'] ?? null;
+        $method = $info['method'] ?? null;
+        $uri = $info['uri'] ?? null;
+        $name = $info['name'] ?? null;
+        $action = $info['action'] ?? null;
+        $middleware = $info['middleware'] ?? null;
+        $path = $info['path'] ?? null;
+        $vendor = $info['vendor'] ?? false;
+
+        return [
+            'domain' => is_string($domain) ? $domain : null,
+            'method' => is_string($method) ? $method : '',
+            'uri' => is_string($uri) ? $uri : '',
+            'name' => is_string($name) ? $name : null,
+            'action' => is_string($action) ? $action : null,
+            'middleware' => is_string($middleware) ? $middleware : null,
+            'path' => is_string($path) ? $path : null,
+            'vendor' => (bool) $vendor,
+            'version' => $version,
+        ];
     }
 
+    /**
+     * @param \Illuminate\Support\Collection<int, array{domain: string|null, method: string, uri: string, name: string|null, action: string|null, middleware: string|null, path: string|null, vendor: bool, version: string|null}> $routes
+     * @return array<int, mixed>
+     */
     protected function forCli($routes): array
     {
         $routes = $routes->map(
-            fn ($route) => array_merge($route, [
+            fn (array $route) => array_merge($route, [
                 'action' => $this->formatActionForCli($route),
                 'method' => $route['method'] == 'GET|HEAD|POST|PUT|PATCH|DELETE|OPTIONS' ? 'ANY' : $route['method'],
                 'uri' => $route['domain'] ? ($route['domain'].'/'.ltrim($route['uri'], '/')) : $route['uri'],
             ]),
         );
 
-        $maxMethod = mb_strlen($routes->max('method'));
-        $maxVersion = (int) mb_strlen($routes->max('version') ?? '');
+        $maxMethod = $routes->reduce(fn (int $carry, array $route) => max($carry, mb_strlen($route['method'])), 0);
+        $maxVersion = $routes->reduce(fn (int $carry, array $route) => max($carry, mb_strlen($route['version'] ?? '')), 0);
 
         $terminalWidth = $this->getTerminalWidth();
         $routeCount = $this->determineRouteCountOutput($routes, $terminalWidth);
 
-        return $routes->map(function ($route) use ($maxMethod, $maxVersion, $terminalWidth) {
+        return $routes->map(function (array $route) use ($maxMethod, $maxVersion, $terminalWidth) {
             [
                 'action' => $action,
                 'method' => $method,
@@ -88,11 +111,11 @@ class ListApiVersionsCommand extends RouteListCommand
                 'version' => $version,
             ] = $route;
 
-            $paddedVersion = str_pad((string) ($version ?? ''), $maxVersion);
+            $paddedVersion = str_pad($version ?? '', $maxVersion);
 
             // When a version column is present, shift middleware indent right by maxVersion + 2
             $versionIndent = $maxVersion > 0 ? $maxVersion + 2 : 0;
-            $middleware = (new Stringable($middleware))->explode("\n")->filter()->whenNotEmpty(
+            $middleware = (new Stringable($middleware ?? ''))->explode("\n")->filter()->whenNotEmpty(
                 fn ($collection) => $collection->map(
                     fn ($middleware) => sprintf(
                         '%s⇂ %s',
@@ -108,7 +131,7 @@ class ListApiVersionsCommand extends RouteListCommand
             $versionColumn = $maxVersion > 0 ? $paddedVersion.'  ' : '';
 
             $dots = str_repeat('.', max(
-                $terminalWidth - mb_strlen($method.$spaces.$versionColumn.$uri.$action) - 6 - ($action ? 1 : 0),
+                $terminalWidth - mb_strlen($method.$spaces.$versionColumn.$uri.($action ?? '')) - 6 - ($action ? 1 : 0),
                 0,
             ));
 
@@ -158,12 +181,19 @@ class ListApiVersionsCommand extends RouteListCommand
 
         $rows = [];
         foreach ($versions as $version => $metadata) {
+            try {
+                $majorKey = ApiVersion::parse((string) $version)->major;
+                $count = $routeCounts[$majorKey] ?? 0;
+            } catch (\Throwable) {
+                $count = 0;
+            }
+
             $rows[] = [
                 $version,
                 ($metadata['deprecated'] ?? false) ? 'yes' : 'no',
                 $metadata['sunset'] ?? '-',
                 $metadata['deprecation_link'] ?? '-',
-                (string) ($routeCounts[(string) $version] ?? 0),
+                (string) $count,
             ];
         }
 
@@ -174,7 +204,7 @@ class ListApiVersionsCommand extends RouteListCommand
     }
 
     /**
-     * @return array<string, int>
+     * @return array<int, int>
      */
     private function countRoutesByVersion(): array
     {
@@ -190,7 +220,7 @@ class ListApiVersionsCommand extends RouteListCommand
 
             try {
                 $version = ApiVersion::parse($versionString);
-                $major = (string) $version->major;
+                $major = $version->major;
                 $counts[$major] = ($counts[$major] ?? 0) + 1;
             } catch (\Throwable) {
                 continue;
