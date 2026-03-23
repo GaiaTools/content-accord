@@ -20,7 +20,6 @@ class ListApiVersionsCommand extends Command
         $versions = config()->array('content-accord.versioning.versions', []);
         $versions = array_filter($versions, static fn ($metadata) => is_array($metadata));
         /** @var array<string, array<string, mixed>> $versions */
-
         if ($versions === []) {
             $this->info('No API versions configured.');
 
