@@ -268,7 +268,10 @@ test('fallback throws exception with require strategy', function () {
 test('fallback throws when latest strategy and no supported versions', function () {
     $resolver = new class implements ContextResolver
     {
-        public function resolve(Request $request): mixed { return null; }
+        public function resolve(Request $request): mixed
+        {
+            return null;
+        }
     };
 
     $dimension = new VersioningDimension(

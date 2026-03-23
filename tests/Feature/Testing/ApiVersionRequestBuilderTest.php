@@ -9,14 +9,15 @@ use GaiaTools\ContentAccord\Testing\Concerns\InteractsWithApiVersion;
 use Illuminate\Foundation\Testing\TestCase as FoundationTestCase;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Testing\TestResponse;
+use Mockery\MockInterface;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
  * Create a mock TestCase that records the last HTTP call made through it.
  *
- * @return Mockery\MockInterface&FoundationTestCase
+ * @return MockInterface&FoundationTestCase
  */
-function makeFoundationTestCaseMock(): Mockery\MockInterface
+function makeFoundationTestCaseMock(): MockInterface
 {
     $mock = Mockery::mock(FoundationTestCase::class);
     $fakeResponse = new TestResponse(new Response('ok', 200));

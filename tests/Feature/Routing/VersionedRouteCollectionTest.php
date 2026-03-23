@@ -2,12 +2,14 @@
 
 use GaiaTools\ContentAccord\Attributes\ApiFallback as ApiFallbackAttr;
 use GaiaTools\ContentAccord\Attributes\ApiVersion as ApiVersionAttr;
+use GaiaTools\ContentAccord\Contracts\ContextResolver;
 use GaiaTools\ContentAccord\Exceptions\MissingVersionException;
 use GaiaTools\ContentAccord\Exceptions\UnsupportedVersionException;
 use GaiaTools\ContentAccord\Resolvers\Version\HeaderVersionResolver;
 use GaiaTools\ContentAccord\Routing\VersionedRouteCollection;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Route;
+use Illuminate\Routing\RouteCollection;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 #[ApiVersionAttr('2')]
@@ -252,7 +254,7 @@ test('fromExisting copies routes into new collection', function () {
     $r2->setAction(['api_version' => '2']);
     $r2->setContainer(app());
 
-    $existing = new Illuminate\Routing\RouteCollection;
+    $existing = new RouteCollection;
     $existing->add($r1);
     $existing->add($r2);
 
@@ -275,7 +277,7 @@ test('matchAgainstRoutes returns fallback route when no non-fallback matches', f
     $request->headers->set('Api-Version', '1');
 
     // fallback route matches but no normal routes — should return the fallback
-    expect(fn () => $collection->match($request))->not->toThrow(\Throwable::class);
+    expect(fn () => $collection->match($request))->not->toThrow(Throwable::class);
 });
 
 test('single non-versioned route is returned directly without version selection', function () {
@@ -346,7 +348,7 @@ test('latest version strategy throws when no supported versions configured', fun
 
     $request = Request::create('/users', 'GET');
 
-    expect(fn () => $collection->match($request))->toThrow(\GaiaTools\ContentAccord\Exceptions\MissingVersionException::class);
+    expect(fn () => $collection->match($request))->toThrow(MissingVersionException::class);
 });
 
 test('require strategy throws with version list in message', function () {
@@ -364,7 +366,7 @@ test('require strategy throws with version list in message', function () {
     try {
         $collection->match($request);
         fail('Expected MissingVersionException');
-    } catch (\GaiaTools\ContentAccord\Exceptions\MissingVersionException $e) {
+    } catch (MissingVersionException $e) {
         expect($e->getMessage())->toContain('v1')
             ->and($e->getMessage())->toContain('v2');
     }
@@ -384,7 +386,7 @@ test('require strategy throws with generic message when no versions configured',
     try {
         $collection->match($request);
         fail('Expected MissingVersionException');
-    } catch (\GaiaTools\ContentAccord\Exceptions\MissingVersionException $e) {
+    } catch (MissingVersionException $e) {
         expect($e->getMessage())->toContain('required');
     }
 });
@@ -401,7 +403,7 @@ test('default strategy throws when no default version configured', function () {
 
     $request = Request::create('/users', 'GET');
 
-    expect(fn () => $collection->match($request))->toThrow(\GaiaTools\ContentAccord\Exceptions\MissingVersionException::class);
+    expect(fn () => $collection->match($request))->toThrow(MissingVersionException::class);
 });
 
 test('ensureSupportedVersion allows any version when supported list is empty', function () {
@@ -583,9 +585,9 @@ test('buildVersionCandidates skips route with truthy non-string api_version', fu
 
 test('resolveRequestedVersion throws UnsupportedVersionException when resolver returns non-ApiVersion non-null', function () {
     // Use a custom resolver (via container) that returns a plain string instead of ApiVersion
-    app()->bind('content-accord.resolver', fn () => new class implements \GaiaTools\ContentAccord\Contracts\ContextResolver
+    app()->bind('content-accord.resolver', fn () => new class implements ContextResolver
     {
-        public function resolve(\Illuminate\Http\Request $request): mixed
+        public function resolve(Request $request): mixed
         {
             return 'not-an-api-version';
         }
@@ -633,7 +635,7 @@ test('supportedVersions returns empty array when versions config is not an array
 });
 
 test('resolver throws InvalidArgumentException when container resolver does not implement ContextResolver', function () {
-    app()->bind('content-accord.resolver', fn () => new \stdClass);
+    app()->bind('content-accord.resolver', fn () => new stdClass);
 
     $config = []; // Empty config → uses container-bound resolver
     $collection = new VersionedRouteCollection($config, app());
@@ -642,7 +644,7 @@ test('resolver throws InvalidArgumentException when container resolver does not 
     $request = Request::create('/users', 'GET');
     $request->headers->set('Api-Version', '1');
 
-    expect(fn () => $collection->match($request))->toThrow(\InvalidArgumentException::class);
+    expect(fn () => $collection->match($request))->toThrow(InvalidArgumentException::class);
 });
 
 test('versionKey handles non-array getAction defensively when middleware provides version', function () {

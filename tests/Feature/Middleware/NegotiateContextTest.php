@@ -447,19 +447,31 @@ test('normalizeDimensionList handles string value for only filter', function () 
 
     $localeDimension = new class implements NegotiationDimension
     {
-        public function key(): string { return 'locale'; }
+        public function key(): string
+        {
+            return 'locale';
+        }
 
         public function resolver(): ContextResolver
         {
             return new class implements ContextResolver
             {
-                public function resolve(Request $request): mixed { return 'en'; }
+                public function resolve(Request $request): mixed
+                {
+                    return 'en';
+                }
             };
         }
 
-        public function validate(mixed $resolved, Request $request): bool { return true; }
+        public function validate(mixed $resolved, Request $request): bool
+        {
+            return true;
+        }
 
-        public function fallback(Request $request): mixed { return 'en'; }
+        public function fallback(Request $request): mixed
+        {
+            return 'en';
+        }
     };
 
     $middleware = new NegotiateContext([$localeDimension], $context);
@@ -523,33 +535,54 @@ test('#[ApiNegotiate] on invokable controller filters dimensions (no @ in contro
 
     $versionDimension = new class implements NegotiationDimension
     {
-        public function key(): string { return 'version'; }
+        public function key(): string
+        {
+            return 'version';
+        }
 
         public function resolver(): ContextResolver
         {
             throw new RuntimeException('Version resolver should not be called.');
         }
 
-        public function validate(mixed $resolved, Request $request): bool { return true; }
+        public function validate(mixed $resolved, Request $request): bool
+        {
+            return true;
+        }
 
-        public function fallback(Request $request): mixed { return null; }
+        public function fallback(Request $request): mixed
+        {
+            return null;
+        }
     };
 
     $localeDimension = new class implements NegotiationDimension
     {
-        public function key(): string { return 'locale'; }
+        public function key(): string
+        {
+            return 'locale';
+        }
 
         public function resolver(): ContextResolver
         {
             return new class implements ContextResolver
             {
-                public function resolve(Request $request): mixed { return 'en'; }
+                public function resolve(Request $request): mixed
+                {
+                    return 'en';
+                }
             };
         }
 
-        public function validate(mixed $resolved, Request $request): bool { return true; }
+        public function validate(mixed $resolved, Request $request): bool
+        {
+            return true;
+        }
 
-        public function fallback(Request $request): mixed { return 'en'; }
+        public function fallback(Request $request): mixed
+        {
+            return 'en';
+        }
     };
 
     $middleware = new NegotiateContext([$versionDimension, $localeDimension], $context);

@@ -1,5 +1,8 @@
 <?php
 
+use GaiaTools\ContentAccord\Commands\ListApiVersionsCommand;
+use Illuminate\Routing\RouteCollection;
+use Illuminate\Routing\Router;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Route;
 
@@ -60,7 +63,6 @@ test('api versions command --routes flag skips versions with no matching routes'
         ->and($output)->not->toContain('Version 2 routes');
 });
 
-
 test('listRoutesByVersion catch block skips routes with unparseable version string', function () {
     // Call the private listRoutesByVersion directly via reflection to bypass
     // countRoutesByVersion (which has no try/catch and would throw first).
@@ -68,18 +70,18 @@ test('listRoutesByVersion catch block skips routes with unparseable version stri
     config(['content-accord.versioning.versions' => ['1' => []]]);
 
     // A route whose api_version cannot be parsed by ApiVersion::parse
-    $badRoute = new \Illuminate\Routing\Route('GET', '/bad', fn () => 'ok');
+    $badRoute = new Illuminate\Routing\Route('GET', '/bad', fn () => 'ok');
     $badAction = $badRoute->getAction();
     $badAction['api_version'] = 'not-a-version!!!';
     $badRoute->setAction($badAction);
 
-    $collection = new \Illuminate\Routing\RouteCollection;
+    $collection = new RouteCollection;
     $collection->add($badRoute);
 
-    $mockRouter = Mockery::mock(\Illuminate\Routing\Router::class);
+    $mockRouter = Mockery::mock(Router::class);
     $mockRouter->shouldReceive('getRoutes')->andReturn($collection);
 
-    $command = new \GaiaTools\ContentAccord\Commands\ListApiVersionsCommand;
+    $command = new ListApiVersionsCommand;
 
     $method = new ReflectionMethod($command, 'listRoutesByVersion');
     $method->setAccessible(true);

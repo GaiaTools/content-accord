@@ -1,9 +1,6 @@
 <?php
 
-use GaiaTools\ContentAccord\Attributes\ApiDeprecate;
-use GaiaTools\ContentAccord\Attributes\ApiFallback;
 use GaiaTools\ContentAccord\Attributes\ApiVersion as ApiVersionAttr;
-use GaiaTools\ContentAccord\Http\Middleware\ApiVersionMetadata;
 use GaiaTools\ContentAccord\Routing\RouteVersionMetadata;
 use Illuminate\Routing\Route;
 

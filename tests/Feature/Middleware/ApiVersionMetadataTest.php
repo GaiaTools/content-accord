@@ -175,7 +175,7 @@ test('handle handles non-array route action gracefully', function () {
     $request = Request::create('/test');
 
     // Mock a Route whose getAction() returns non-array — triggers line 35
-    $mockRoute = Mockery::mock(\Illuminate\Routing\Route::class)->makePartial();
+    $mockRoute = Mockery::mock(Route::class)->makePartial();
     $mockRoute->shouldReceive('getAction')->withNoArgs()->andReturn('not-an-array');
 
     $request->setRouteResolver(fn () => $mockRoute);

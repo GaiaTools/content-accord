@@ -213,7 +213,7 @@ test('service provider returns early when route collection is not a RouteCollect
     $routesProp->setAccessible(true);
     $original = $routesProp->getValue($router);
 
-    $routesProp->setValue($router, new \stdClass);
+    $routesProp->setValue($router, new stdClass);
 
     $provider = app()->getProvider(ContentAccordServiceProvider::class);
     $provider->boot(); // Line 98 is hit — not a RouteCollection, returns early

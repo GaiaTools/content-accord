@@ -1,7 +1,6 @@
 <?php
 
 use GaiaTools\ContentAccord\Contracts\ContextResolver;
-use GaiaTools\ContentAccord\Contracts\VersionResolver;
 use GaiaTools\ContentAccord\Resolvers\ChainedResolver;
 use GaiaTools\ContentAccord\Resolvers\Version\AcceptHeaderVersionResolver;
 use GaiaTools\ContentAccord\Resolvers\Version\AliasVersionResolver;
@@ -10,8 +9,8 @@ use GaiaTools\ContentAccord\Resolvers\Version\QueryStringVersionResolver;
 use GaiaTools\ContentAccord\Resolvers\Version\UriVersionResolver;
 use GaiaTools\ContentAccord\Resolvers\Version\VersionResolverFactory;
 use GaiaTools\ContentAccord\ValueObjects\ApiVersion;
-use Illuminate\Container\Container;
 use Illuminate\Http\Request;
+use Illuminate\Routing\Route;
 
 test('build throws when resolver config is null', function () {
     $factory = new VersionResolverFactory(app(), []);
@@ -284,15 +283,15 @@ test('alias raw extractor for URI resolver extracts route parameter', function (
     expect($resolver)->toBeInstanceOf(AliasVersionResolver::class);
 
     // Bind request first, then set the parameter
-    $request = Illuminate\Http\Request::create('/v1/users');
-    $route = new Illuminate\Routing\Route('GET', '/v{version}/users', []);
+    $request = Request::create('/v1/users');
+    $route = new Route('GET', '/v{version}/users', []);
     $route->bind($request);
     $route->setParameter('version', 'latest');
     $request->setRouteResolver(fn () => $route);
 
     $version = $resolver->resolve($request);
 
-    expect($version)->toBeInstanceOf(\GaiaTools\ContentAccord\ValueObjects\ApiVersion::class)
+    expect($version)->toBeInstanceOf(ApiVersion::class)
         ->and($version->major)->toBe(1);
 });
 
@@ -306,12 +305,12 @@ test('alias raw extractor for Header resolver extracts header value', function (
     $resolver = $factory->build();
     expect($resolver)->toBeInstanceOf(AliasVersionResolver::class);
 
-    $request = Illuminate\Http\Request::create('/users');
+    $request = Request::create('/users');
     $request->headers->set('Api-Version', 'stable');
 
     $version = $resolver->resolve($request);
 
-    expect($version)->toBeInstanceOf(\GaiaTools\ContentAccord\ValueObjects\ApiVersion::class)
+    expect($version)->toBeInstanceOf(ApiVersion::class)
         ->and($version->major)->toBe(2);
 });
 
@@ -325,11 +324,11 @@ test('alias raw extractor for Query resolver extracts query value', function () 
     $resolver = $factory->build();
     expect($resolver)->toBeInstanceOf(AliasVersionResolver::class);
 
-    $request = Illuminate\Http\Request::create('/users', 'GET', ['v' => 'current']);
+    $request = Request::create('/users', 'GET', ['v' => 'current']);
 
     $version = $resolver->resolve($request);
 
-    expect($version)->toBeInstanceOf(\GaiaTools\ContentAccord\ValueObjects\ApiVersion::class)
+    expect($version)->toBeInstanceOf(ApiVersion::class)
         ->and($version->major)->toBe(3);
 });
 

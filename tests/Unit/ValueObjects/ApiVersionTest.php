@@ -5,6 +5,7 @@
 // a null return value — the only way to exercise line 31 in ApiVersion.php.
 // The override delegates to the real function for every input except the sentinel string,
 // so all other ApiVersion tests continue to work normally.
+
 namespace GaiaTools\ContentAccord\ValueObjects {
     function preg_replace(mixed $pattern, mixed $replacement, mixed $subject, mixed ...$args): mixed
     {
