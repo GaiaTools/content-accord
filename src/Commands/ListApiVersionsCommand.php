@@ -36,6 +36,7 @@ class ListApiVersionsCommand extends RouteListCommand
     {
         return array_merge(parent::getOptions(), [
             ['summary', null, InputOption::VALUE_NONE, 'Show a version summary table instead of individual routes'],
+            ['versioned', null, InputOption::VALUE_NONE, 'Only show routes that have an API version assigned'],
         ]);
     }
 
@@ -54,6 +55,10 @@ class ListApiVersionsCommand extends RouteListCommand
         $info['version'] = is_string($versionString) && $versionString !== ''
             ? $this->formatVersion($versionString)
             : null;
+
+        if ($this->option('versioned') && $info['version'] === null) {
+            return null;
+        }
 
         return $info;
     }

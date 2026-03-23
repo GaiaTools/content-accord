@@ -98,6 +98,27 @@ test('api list command unversioned routes show empty version column', function (
         ->and($output)->toContain('health');
 });
 
+test('api list command --versioned filters out unversioned routes', function () {
+    config([
+        'content-accord.versioning.versions' => [
+            '1' => ['deprecated' => false],
+        ],
+    ]);
+
+    Route::middleware('content-accord.version:1')->group(function () {
+        Route::get('/things', [CommandTestController::class, 'index']);
+    });
+
+    Route::get('/health', [CommandTestController::class, 'index']);
+
+    Artisan::call('api:list', ['--versioned' => true]);
+
+    $output = Artisan::output();
+
+    expect($output)->toContain('things')
+        ->and($output)->not->toContain('health');
+});
+
 test('api list command routes output includes version in json', function () {
     config([
         'content-accord.versioning.versions' => [
