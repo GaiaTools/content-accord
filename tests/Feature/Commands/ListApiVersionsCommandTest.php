@@ -139,6 +139,27 @@ test('api list command routes output includes version in json', function () {
         ->and($versioned['version'])->toBe('v1');
 });
 
+test('api list command truncates long action when it exceeds terminal width', function () {
+    config([
+        'content-accord.versioning.versions' => [
+            '1' => ['deprecated' => false],
+        ],
+    ]);
+
+    Route::middleware('content-accord.version:1')->group(function () {
+        // URI + action must exceed COLUMNS - 6 to trigger truncation
+        Route::get('/'.str_repeat('x', 40), [CommandTestController::class, 'index']);
+    });
+
+    putenv('COLUMNS=80');
+
+    Artisan::call('api:list');
+
+    putenv('COLUMNS');
+
+    expect(Artisan::output())->toContain('…');
+});
+
 test('api list command skips route with unparseable version string', function () {
     config([
         'content-accord.versioning.versions' => [
