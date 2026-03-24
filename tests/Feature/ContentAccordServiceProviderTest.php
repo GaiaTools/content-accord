@@ -3,9 +3,11 @@
 use GaiaTools\ContentAccord\ContentAccordServiceProvider;
 use GaiaTools\ContentAccord\Contracts\ContextResolver;
 use GaiaTools\ContentAccord\Contracts\NegotiationDimension;
+use GaiaTools\ContentAccord\Dimensions\LocaleDimension;
 use GaiaTools\ContentAccord\Dimensions\VersioningDimension;
 use GaiaTools\ContentAccord\Http\Middleware\NegotiateContext;
 use GaiaTools\ContentAccord\Resolvers\ChainedResolver;
+use GaiaTools\ContentAccord\Resolvers\Locale\AcceptLanguageLocaleResolver;
 use GaiaTools\ContentAccord\Resolvers\Version\HeaderVersionResolver;
 use GaiaTools\ContentAccord\Resolvers\Version\UriVersionResolver;
 use GaiaTools\ContentAccord\Routing\VersionedRouteCollection;
@@ -266,6 +268,71 @@ test('resolveDimensions throws when dimension class does not implement Negotiati
     app()->forgetInstance(NegotiateContext::class);
 
     expect(fn () => app(NegotiateContext::class))->toThrow(InvalidArgumentException::class);
+});
+
+test('usesLocaleDimension returns true when LocaleDimension is in config', function () {
+    config(['content-accord.dimensions' => [LocaleDimension::class]]);
+
+    $provider = app()->getProvider(ContentAccordServiceProvider::class);
+
+    $method = new ReflectionMethod($provider, 'usesLocaleDimension');
+    $method->setAccessible(true);
+
+    expect($method->invoke($provider))->toBeTrue();
+});
+
+test('service provider binds LocaleDimension singleton when LocaleDimension is in dimensions config', function () {
+    config([
+        'content-accord.dimensions' => [LocaleDimension::class],
+        'content-accord.locale.resolver' => AcceptLanguageLocaleResolver::class,
+        'content-accord.locale.default' => 'en',
+        'content-accord.locale.supported' => ['en'],
+    ]);
+
+    $provider = new ContentAccordServiceProvider(app());
+    $provider->register();
+
+    expect(app()->make(LocaleDimension::class))->toBeInstanceOf(LocaleDimension::class);
+});
+
+test('service provider creates locale dimension from config', function () {
+    config([
+        'content-accord.locale.resolver' => AcceptLanguageLocaleResolver::class,
+        'content-accord.locale.default' => 'en',
+        'content-accord.locale.supported' => ['en', 'fr'],
+    ]);
+
+    $provider = app()->getProvider(ContentAccordServiceProvider::class);
+
+    $method = new ReflectionMethod($provider, 'createLocaleDimension');
+    $method->setAccessible(true);
+    $dimension = $method->invoke($provider);
+
+    $supportedProperty = new ReflectionProperty($dimension, 'supportedLocales');
+    $supportedProperty->setAccessible(true);
+
+    expect($dimension)->toBeInstanceOf(LocaleDimension::class)
+        ->and($dimension->key())->toBe('locale')
+        ->and($supportedProperty->getValue($dimension))->toBe(['en', 'fr']);
+});
+
+test('service provider handles non-array supported locales in locale config', function () {
+    config([
+        'content-accord.locale.resolver' => AcceptLanguageLocaleResolver::class,
+        'content-accord.locale.default' => 'en',
+        'content-accord.locale.supported' => 'not-an-array',
+    ]);
+
+    $provider = app()->getProvider(ContentAccordServiceProvider::class);
+
+    $method = new ReflectionMethod($provider, 'createLocaleDimension');
+    $method->setAccessible(true);
+    $dimension = $method->invoke($provider);
+
+    $property = new ReflectionProperty($dimension, 'supportedLocales');
+    $property->setAccessible(true);
+
+    expect($property->getValue($dimension))->toBe([]);
 });
 
 class CustomTestResolver implements ContextResolver

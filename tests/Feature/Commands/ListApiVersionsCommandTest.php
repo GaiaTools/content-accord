@@ -138,3 +138,53 @@ test('api list command routes output includes version in json', function () {
     expect($versioned)->not->toBeNull()
         ->and($versioned['version'])->toBe('v1');
 });
+
+test('api list command skips route with unparseable version string', function () {
+    config([
+        'content-accord.versioning.versions' => [
+            '1' => ['deprecated' => false],
+        ],
+    ]);
+
+    Route::middleware('content-accord.version:not-a-version')->group(function () {
+        Route::get('/broken', [CommandTestController::class, 'index']);
+    });
+
+    Artisan::call('api:list');
+
+    expect(Artisan::output())->not->toContain('broken');
+});
+
+test('api list command --summary handles unparseable route version gracefully', function () {
+    config([
+        'content-accord.versioning.versions' => [
+            '1' => ['deprecated' => false],
+        ],
+    ]);
+
+    Route::middleware('content-accord.version:not-a-version')->group(function () {
+        Route::get('/broken', [CommandTestController::class, 'index']);
+    });
+
+    Artisan::call('api:list', ['--summary' => true]);
+
+    $output = Artisan::output();
+
+    expect($output)->toContain('1')
+        ->and($output)->toContain('0');
+});
+
+test('api list command --summary handles unparseable config version key gracefully', function () {
+    config([
+        'content-accord.versioning.versions' => [
+            'not-a-version' => ['deprecated' => false],
+        ],
+    ]);
+
+    Artisan::call('api:list', ['--summary' => true]);
+
+    $output = Artisan::output();
+
+    expect($output)->toContain('not-a-version')
+        ->and($output)->toContain('0');
+});
