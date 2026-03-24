@@ -103,68 +103,84 @@ class ListApiVersionsCommand extends RouteListCommand
         $terminalWidth = $this->getTerminalWidth();
         $routeCount = $this->determineRouteCountOutput($routes, $terminalWidth);
 
-        return $routes->map(function (array $route) use ($maxMethod, $maxVersion, $terminalWidth) {
-            [
-                'action' => $action,
-                'method' => $method,
-                'middleware' => $middleware,
-                'uri' => $uri,
-                'version' => $version,
-            ] = $route;
-
-            $paddedVersion = str_pad($version ?? '', $maxVersion);
-
-            // When a version column is present, shift middleware indent right by maxVersion + 2
-            $versionIndent = $maxVersion > 0 ? $maxVersion + 2 : 0;
-            $middleware = (new Stringable($middleware ?? ''))->explode("\n")->filter()->whenNotEmpty(
-                fn ($collection) => $collection->map(
-                    fn ($middleware) => sprintf(
-                        '%s⇂ %s',
-                        str_repeat(' ', 9 + $maxMethod + $versionIndent),
-                        $middleware,
-                    )
-                )
-            )->implode("\n");
-
-            $spaces = str_repeat(' ', max($maxMethod + 6 - mb_strlen($method), 0));
-
-            // Version column: paddedVersion + 2-space separator (only when any route has a version)
-            $versionColumn = $maxVersion > 0 ? $paddedVersion.'  ' : '';
-
-            $dots = str_repeat('.', max(
-                $terminalWidth - mb_strlen($method.$spaces.$versionColumn.$uri.($action ?? '')) - 6 - ($action ? 1 : 0),
-                0,
-            ));
-
-            $dots = empty($dots) ? $dots : " $dots";
-
-            if ($action && ! $this->output->isVerbose() && mb_strlen($method.$spaces.$versionColumn.$uri.$action.$dots) > ($terminalWidth - 6)) {
-                $action = substr($action, 0, $terminalWidth - 7 - mb_strlen($method.$spaces.$versionColumn.$uri.$dots)).'…';
-            }
-
-            $method = (new Stringable($method))->explode('|')->map(
-                fn ($m) => sprintf('<fg=%s>%s</>', $this->verbColors[$m] ?? 'default', $m),
-            )->implode('<fg=#6C7280>|</>');
-
-            $versionFormatted = $maxVersion > 0
-                ? sprintf('<fg=#6C7280>%s</>  ', $paddedVersion)
-                : '';
-
-            return [sprintf(
-                '  <fg=white;options=bold>%s</> %s%s<fg=white>%s</><fg=#6C7280>%s %s</>',
-                $method,
-                $spaces,
-                $versionFormatted,
-                preg_replace('#({[^}]+})#', '<fg=yellow>$1</>', $uri),
-                $dots,
-                str_replace('   ', ' › ', $action ?? ''),
-            ), $this->output->isVerbose() && ! empty($middleware) ? "<fg=#6C7280>$middleware</>" : null];
-        })
+        return $routes->map(fn (array $route) => $this->formatRouteForCli($route, $maxMethod, $maxVersion, $terminalWidth))
             ->flatten()
             ->filter()
             ->prepend('')
             ->push('')->push($routeCount)->push('')
             ->toArray();
+    }
+
+    /** @param array{action: string|null, method: string, middleware: string|null, uri: string, version: string|null} $route */
+    private function formatRouteForCli(array $route, int $maxMethod, int $maxVersion, int $terminalWidth): array
+    {
+        ['action' => $action, 'method' => $method, 'middleware' => $middleware, 'uri' => $uri, 'version' => $version] = $route;
+
+        $paddedVersion = str_pad($version ?? '', $maxVersion);
+
+        // When a version column is present, shift middleware indent right by maxVersion + 2
+        $versionIndent = $maxVersion > 0 ? $maxVersion + 2 : 0;
+        $middleware = $this->formatMiddlewareLines($middleware ?? '', $maxMethod, $versionIndent);
+
+        $spaces = str_repeat(' ', max($maxMethod + 6 - mb_strlen($method), 0));
+
+        // Version column: paddedVersion + 2-space separator (only when any route has a version)
+        $versionColumn = $maxVersion > 0 ? $paddedVersion.'  ' : '';
+
+        $dots = $this->calculateDots($method, $spaces, $versionColumn, $uri, $action, $terminalWidth);
+        $action = $this->maybeTruncateAction($action, $method, $spaces, $versionColumn, $uri, $dots, $terminalWidth);
+
+        $versionFormatted = $maxVersion > 0 ? sprintf('<fg=#6C7280>%s</>  ', $paddedVersion) : '';
+
+        return $this->buildRouteRow($method, $spaces, $versionFormatted, $uri, $dots, $action, $middleware);
+    }
+
+    private function buildRouteRow(string $method, string $spaces, string $versionFormatted, string $uri, string $dots, ?string $action, string $middleware): array
+    {
+        return [sprintf(
+            '  <fg=white;options=bold>%s</> %s%s<fg=white>%s</><fg=#6C7280>%s %s</>',
+            $this->colorizeMethod($method),
+            $spaces,
+            $versionFormatted,
+            preg_replace('#({[^}]+})#', '<fg=yellow>$1</>', $uri),
+            $dots,
+            str_replace('   ', ' › ', $action ?? ''),
+        ), $this->output->isVerbose() && ! empty($middleware) ? "<fg=#6C7280>$middleware</>" : null];
+    }
+
+    private function calculateDots(string $method, string $spaces, string $versionColumn, string $uri, ?string $action, int $terminalWidth): string
+    {
+        $dots = str_repeat('.', max(
+            $terminalWidth - mb_strlen($method.$spaces.$versionColumn.$uri.($action ?? '')) - 6 - ($action ? 1 : 0),
+            0,
+        ));
+
+        return empty($dots) ? $dots : " $dots";
+    }
+
+    private function maybeTruncateAction(?string $action, string $method, string $spaces, string $versionColumn, string $uri, string $dots, int $terminalWidth): ?string
+    {
+        if ($action && ! $this->output->isVerbose() && mb_strlen($method.$spaces.$versionColumn.$uri.$action.$dots) > ($terminalWidth - 6)) {
+            return substr($action, 0, $terminalWidth - 7 - mb_strlen($method.$spaces.$versionColumn.$uri.$dots)).'…';
+        }
+
+        return $action;
+    }
+
+    private function formatMiddlewareLines(string $middleware, int $maxMethod, int $versionIndent): string
+    {
+        return (new Stringable($middleware))->explode("\n")->filter()->whenNotEmpty(
+            fn ($collection) => $collection->map(
+                fn ($m) => sprintf('%s⇂ %s', str_repeat(' ', 9 + $maxMethod + $versionIndent), $m)
+            )
+        )->implode("\n");
+    }
+
+    private function colorizeMethod(string $method): string
+    {
+        return (new Stringable($method))->explode('|')->map(
+            fn ($m) => sprintf('<fg=%s>%s</>', $this->verbColors[$m] ?? 'default', $m),
+        )->implode('<fg=#6C7280>|</>');
     }
 
     private function showSummary(): void
