@@ -112,7 +112,7 @@ class ListApiVersionsCommand extends RouteListCommand
     }
 
     /**
-     * @param array{action: string|null, method: string, middleware: string|null, uri: string, version: string|null} $route
+     * @param  array{action: string|null, method: string, middleware: string|null, uri: string, version: string|null}  $route
      * @return array{0: string, 1: string|null}
      */
     private function formatRouteForCli(array $route, int $maxMethod, int $maxVersion, int $terminalWidth): array
