@@ -4,6 +4,7 @@ namespace GaiaTools\ContentAccord;
 
 use GaiaTools\ContentAccord\Commands\ListApiVersionsCommand;
 use GaiaTools\ContentAccord\Contracts\NegotiationDimension;
+use GaiaTools\ContentAccord\Dimensions\LocaleDimension;
 use GaiaTools\ContentAccord\Dimensions\VersioningDimension;
 use GaiaTools\ContentAccord\Enums\MissingVersionStrategy;
 use GaiaTools\ContentAccord\Http\Middleware\ApiVersionMetadata;
@@ -11,6 +12,7 @@ use GaiaTools\ContentAccord\Http\Middleware\DeprecationHeaders;
 use GaiaTools\ContentAccord\Http\Middleware\EnforceSunset;
 use GaiaTools\ContentAccord\Http\Middleware\NegotiateContext;
 use GaiaTools\ContentAccord\Http\NegotiatedContext;
+use GaiaTools\ContentAccord\Resolvers\Locale\LocaleResolverFactory;
 use GaiaTools\ContentAccord\Resolvers\Version\VersionResolverFactory;
 use GaiaTools\ContentAccord\Routing\ApiVersionRegistrar;
 use GaiaTools\ContentAccord\Routing\VersionedRouteCollection;
@@ -49,6 +51,12 @@ class ContentAccordServiceProvider extends ServiceProvider
 
             $this->app->singleton(VersioningDimension::class, function (Container $app) {
                 return $this->createVersioningDimension();
+            });
+        }
+
+        if ($this->usesLocaleDimension()) {
+            $this->app->singleton(LocaleDimension::class, function (Container $app) {
+                return $this->createLocaleDimension();
             });
         }
     }
@@ -157,6 +165,42 @@ class ContentAccordServiceProvider extends ServiceProvider
         }
 
         return false;
+    }
+
+    private function usesLocaleDimension(): bool
+    {
+        $dimensions = config()->array('content-accord.dimensions', []);
+
+        foreach ($dimensions as $dimension) {
+            if ($dimension instanceof LocaleDimension || $dimension === LocaleDimension::class) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function createLocaleDimension(): LocaleDimension
+    {
+        $config = config()->array('content-accord.locale');
+
+        /** @var Container $container */
+        $container = $this->app;
+        $resolver = (new LocaleResolverFactory($container, $config))->build();
+
+        $default = config()->string('content-accord.locale.default', 'en');
+
+        $supported = $config['supported'] ?? [];
+        if (! is_array($supported)) {
+            $supported = [];
+        }
+        $supportedLocales = array_values(array_filter($supported, 'is_string'));
+
+        return new LocaleDimension(
+            resolver: $resolver,
+            default: $default,
+            supportedLocales: $supportedLocales,
+        );
     }
 
     /**
