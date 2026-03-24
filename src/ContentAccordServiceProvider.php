@@ -49,13 +49,13 @@ class ContentAccordServiceProvider extends ServiceProvider
                 return (new VersionResolverFactory($app, config()->array('content-accord.versioning')))->build();
             });
 
-            $this->app->singleton(VersioningDimension::class, function (Container $app) {
+            $this->app->singleton(VersioningDimension::class, function () {
                 return $this->createVersioningDimension();
             });
         }
 
         if ($this->usesLocaleDimension()) {
-            $this->app->singleton(LocaleDimension::class, function (Container $app) {
+            $this->app->singleton(LocaleDimension::class, function () {
                 return $this->createLocaleDimension();
             });
         }
