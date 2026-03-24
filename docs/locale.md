@@ -260,7 +260,7 @@ A client can then choose:
 ```http
 # Standard browser header
 GET /api/articles
-Accept-Language: fr-FR,fr;q=0.9
+Accept-Language: fr-FR
 
 # Explicit override header
 GET /api/articles

@@ -54,3 +54,4 @@ above register at `/api/v1/users` and `/api/v2/users` respectively.
 - Middleware pipeline: `docs/middleware.md`
 - Resolution and routing behavior: `docs/resolution.md`
 - Usage and examples: `docs/usage.md`
+- Locale negotiation: `docs/locale.md`
