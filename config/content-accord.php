@@ -1,6 +1,7 @@
 <?php
 
 use GaiaTools\ContentAccord\Dimensions\VersioningDimension;
+use GaiaTools\ContentAccord\Resolvers\Locale\AcceptLanguageLocaleResolver;
 use GaiaTools\ContentAccord\Resolvers\Version\UriVersionResolver;
 
 return [
@@ -162,24 +163,77 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Future Dimensions
+    | Locale Negotiation Configuration
     |--------------------------------------------------------------------------
     |
-    | Additional negotiation dimensions can be added here as sibling keys
-    | and referenced in the "dimensions" array above.
-    | Examples:
-    |
-    | 'locale' => [
-    |     'strategy' => 'header',
-    |     'default' => 'en',
-    |     'supported' => ['en', 'fr', 'es'],
-    | ],
-    |
-    | 'format' => [
-    |     'strategy' => 'accept',
-    |     'default' => 'json',
-    |     'supported' => ['json', 'xml'],
-    | ],
+    | Settings for the locale negotiation dimension. Enable this dimension by
+    | adding LocaleDimension::class to the "dimensions" array above.
     |
     */
+    'locale' => [
+        /*
+        |----------------------------------------------------------------------
+        | Resolver Configuration
+        |----------------------------------------------------------------------
+        |
+        | Provide a single resolver class or an array of resolvers tried in
+        | order (first non-null wins).
+        | Available resolvers:
+        | - GaiaTools\ContentAccord\Resolvers\Locale\AcceptLanguageLocaleResolver
+        | - GaiaTools\ContentAccord\Resolvers\Locale\HeaderLocaleResolver
+        | - GaiaTools\ContentAccord\Resolvers\Locale\QueryStringLocaleResolver
+        |
+        */
+        'resolver' => [
+            AcceptLanguageLocaleResolver::class,
+            // GaiaTools\ContentAccord\Resolvers\Locale\HeaderLocaleResolver::class,
+            // GaiaTools\ContentAccord\Resolvers\Locale\QueryStringLocaleResolver::class,
+        ],
+
+        /*
+        |----------------------------------------------------------------------
+        | Default Locale
+        |----------------------------------------------------------------------
+        |
+        | Returned when no locale could be resolved from the request.
+        | Set to an empty string to reject requests with no locale instead.
+        |
+        */
+        'default' => env('CONTENT_ACCORD_LOCALE_DEFAULT', 'en'),
+
+        /*
+        |----------------------------------------------------------------------
+        | Supported Locales
+        |----------------------------------------------------------------------
+        |
+        | The locales your application accepts. Requests for an unsupported
+        | locale will receive a 406 Not Acceptable response.
+        | An empty array disables locale validation (all locales accepted).
+        |
+        */
+        'supported' => ['en'],
+
+        /*
+        |----------------------------------------------------------------------
+        | Resolution Strategy Configurations
+        |----------------------------------------------------------------------
+        */
+        'strategies' => [
+            /*
+            | Header Strategy: Read locale from a custom request header
+            | Example: X-Locale: fr
+            */
+            'header' => [
+                'name' => env('CONTENT_ACCORD_LOCALE_HEADER', 'X-Locale'),
+            ],
+
+            /*
+            | Query String Strategy: Read locale from a query parameter
+            | Example: /api/users?locale=fr
+            */
+            'query' => [
+                'parameter' => env('CONTENT_ACCORD_LOCALE_QUERY_PARAMETER', 'locale'),
+            ],
+        ],
+    ],
 ];

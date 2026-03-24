@@ -179,6 +179,18 @@ test('build does not wrap AcceptHeaderVersionResolver with aliases (not applicab
     expect($resolver)->toBeInstanceOf(AcceptHeaderVersionResolver::class);
 });
 
+test('build does not wrap when aliases config is not an array', function () {
+    $factory = new VersionResolverFactory(app(), [
+        'resolver' => UriVersionResolver::class,
+        'strategies' => ['uri' => ['parameter' => 'version', 'prefix' => 'v']],
+        'aliases' => 'not-an-array',
+    ]);
+
+    $resolver = $factory->build();
+
+    expect($resolver)->toBeInstanceOf(UriVersionResolver::class);
+});
+
 test('build does not wrap when aliases config is empty array', function () {
     $factory = new VersionResolverFactory(app(), [
         'resolver' => UriVersionResolver::class,
