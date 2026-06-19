@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.2.1](https://github.com/GaiaTools/content-accord/compare/v0.2.0...v0.2.1) (2026-06-19)
+
+
+### Miscellaneous Chores
+
+* **ci:** update SonarQube host URL ([#19](https://github.com/GaiaTools/content-accord/issues/19)) ([1a8505d](https://github.com/GaiaTools/content-accord/commit/1a8505d4d03ba9f6905a495331e170908c1d830b))
+* **deps:** bump googleapis/release-please-action from 4 to 5 ([#21](https://github.com/GaiaTools/content-accord/issues/21)) ([f0f8744](https://github.com/GaiaTools/content-accord/commit/f0f8744166939c14b0f6df63a66bebf32a0fc804))
+
 ## [0.2.0](https://github.com/GaiaTools/content-accord/compare/v0.1.0...v0.2.0) (2026-03-24)
 
 
